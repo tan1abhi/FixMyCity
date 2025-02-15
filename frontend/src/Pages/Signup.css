@@ -1,0 +1,159 @@
+/* General Styles */
+
+/* * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+} */
+
+/*  
+html, body {
+  height: 100%; /* Ensure full height of the page 
+  /* overflow: hidden; Prevent body overflow 
+}
+*/
+
+/*  
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  /* display: flex;
+  justify-content: center;
+  align-items: center; */
+  /* padding: 20px; Add padding to ensure space around the form 
+}
+*/
+
+/* Signup Container
+.signup-container {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  overflow-y: auto; /* Allow vertical scrolling if content exceeds container height 
+  max-height: 80vh; /* Limit container height to 80% of the viewport height 
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Ensure the form starts from the top 
+  margin-bottom: 20px; /* Add space at the bottom 
+}
+*/
+
+/* Title */
+
+/* .signup-title {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 20px;
+} */
+
+/* Form Styles */
+
+/* .signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  flex-grow: 1; 
+} */
+
+/* Field Styles */
+
+/* .signup-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+} */
+
+
+/* Label Styles */
+
+/* .signup-label {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 5px;
+} */
+
+/* Input and Select Styles */
+
+/* .signup-input, .signup-select {
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 100%;
+  margin-bottom: 15px;
+  outline: none;
+  transition: border-color 0.3s ease;
+} */
+
+
+.signup-input:focus, .signup-select:focus {
+  border-color: #3498db; /* Change border color on focus */
+}
+
+/* Button Styles */
+
+
+/* .signup-button {
+  padding: 12px;
+  font-size: 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.signup-button:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px); 
+} 
+*/
+
+/* Link Styles */
+
+
+/* .signup-link {
+  font-size: 14px;
+  color: #666;
+  margin-top: 10px;
+}
+
+.signup-link a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.signup-link a:hover {
+  text-decoration: underline;
+} */
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  .signup-container {
+    padding: 20px;
+    width: 90%;
+    max-width: 350px;
+    max-height: 80vh; /* Adjust height for smaller screens */
+  }
+  
+
+  .signup-title {
+    font-size: 24px;
+  }
+
+  .signup-input, .signup-select {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .signup-button {
+    font-size: 14px;
+    padding: 10px;
+  }
+}
