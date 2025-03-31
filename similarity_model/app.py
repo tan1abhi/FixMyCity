@@ -7,10 +7,13 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from flask_cors import CORS
 from dotenv import load_dotenv
-
+import traceback
 
 # Load .env file
 load_dotenv()
+
+# Set environment variable to disable tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Get the Firebase credentials path from the environment
 firebase_credentials = {
@@ -27,14 +30,18 @@ firebase_credentials = {
     "universe_domain": os.getenv("FIREBASE_UNIVERSE_DOMAIN"),
 }
 
-
 app = Flask(__name__)
-CORS(app, origins=["https://fixmycity-deploy.onrender.com"])
-
+CORS(app)  # Allow all origins (for development)
 
 # Load fine-tuned SBERT model
 MODEL_PATH = os.path.join("model", "fine_tuned_sbert")
-model = SentenceTransformer(MODEL_PATH)
+try:
+    print("[INFO] Loading SBERT Model...")
+    model = SentenceTransformer(MODEL_PATH)
+    print("[INFO] SBERT Model Loaded Successfully!")
+except Exception as e:
+    print(f"[ERROR] Failed to load the model: {str(e)}")
+    raise e
 
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate(firebase_credentials)
@@ -123,93 +130,78 @@ def load_issues_from_firestore():
 # Preload issues on startup
 issues_data, issue_embeddings = load_issues_from_firestore()
 
-@app.route("/")
-def home():
-    return "Similarity Model is running!"
-
-@app.route("/find_similar", methods=["POST", "OPTIONS"])
+@app.route("/find_similar", methods=["POST"])
 def find_similar():
-    # Handle CORS preflight requests
-    if request.method == "OPTIONS":
-        response = jsonify({"message": "CORS preflight response"})
-        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        return response, 200
+    try:
+        data = request.get_json()
 
-    data = request.get_json()
+        title = data.get("issueTitle")
+        raw_description = data.get("description")  # Original structure
+        category = data.get("category")
+        address = data.get("address")
 
-    title = data.get("issueTitle")
-    raw_description = data.get("description")  # Original structure
-    category = data.get("category")
-    address = data.get("address")
+        if not all([title, raw_description, category, address]):
+            return jsonify({"error": "Missing one or more required fields."}), 400
 
-    if not all([title, raw_description, category, address]):
-        response = jsonify({"error": "Missing one or more required fields."})
-        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
-        return response, 400
+        query_pincode = extract_pincode(address)
+        if not query_pincode:
+            return jsonify({"error": "No valid pincode found in the address."}), 400
 
-    query_pincode = extract_pincode(address)
-    if not query_pincode:
-        response = jsonify({"error": "No valid pincode found in the address."})
-        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
-        return response, 400
+        # Flatten description for similarity search
+        query_description_flat = flatten_description(raw_description)
 
-    # Flatten description for similarity search
-    query_description_flat = flatten_description(raw_description)
+        # Filter issues by category and pincode
+        filtered = []
+        for i, issue in enumerate(issues_data):
+            issue_address = issue.get("address", "")
+            issue_pincode = extract_pincode(issue_address)
+            issue_category = issue.get("category")
 
-    # Filter issues by category and pincode
-    filtered = []
-    for i, issue in enumerate(issues_data):
-        issue_address = issue.get("address", "")
-        issue_pincode = extract_pincode(issue_address)
-        issue_category = issue.get("category")
+            print(f"[DEBUG] Issue {i}: Category = {issue_category}, Pincode = {issue_pincode}")
 
-        print(f"[DEBUG] Issue {i}: Category = {issue_category}, Pincode = {issue_pincode}")
+            if issue_category == category and issue_pincode == query_pincode:
+                filtered.append((i, issue))
 
-        if issue_category == category and issue_pincode == query_pincode:
-            filtered.append((i, issue))
+        if not filtered:
+            return jsonify({"message": "No similar issues found in same category and pincode."}), 200
 
-    if not filtered:
-        response = jsonify({"message": "No similar issues found in same category and pincode."})
-        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
-        return response, 200
+        # Prepare filtered embeddings
+        filtered_indices = [i for i, _ in filtered]
+        filtered_issues = [issue for _, issue in filtered]
+        filtered_embeddings = issue_embeddings[filtered_indices]
 
-    # Prepare filtered embeddings
-    filtered_indices = [i for i, _ in filtered]
-    filtered_issues = [issue for _, issue in filtered]
-    filtered_embeddings = issue_embeddings[filtered_indices]
+        # Embed user input
+        query_text = title + " " + query_description_flat
+        query_embedding = model.encode(query_text, convert_to_tensor=True)
 
-    # Embed user input
-    query_text = title + " " + query_description_flat
-    query_embedding = model.encode(query_text, convert_to_tensor=True)
+        # Similarity calculation
+        similarities = util.cos_sim(query_embedding, filtered_embeddings)[0]
+        top_n = min(5, len(similarities))
+        top_indices = torch.topk(similarities, k=top_n).indices.tolist()
 
-    # Similarity calculation
-    similarities = util.cos_sim(query_embedding, filtered_embeddings)[0]
-    top_n = min(5, len(similarities))
-    top_indices = torch.topk(similarities, k=top_n).indices.tolist()
+        results = []
+        for i in top_indices:
+            issue = filtered_issues[i]
+            results.append({
+                "issueId": issue["issueId"],
+                "title": issue["issueTitle"],
+                "description": issue["description"],  # ✅ Include list of descriptions with dates
+                "category": issue["category"],
+                "address": issue["address"],
+                "upvotes": issue.get("upvotes", 0),
+                "media": issue.get("media", []),
+                "similarity_score": round(similarities[i].item(), 4),
+                "dateOfComplaint": issue.get("dateOfComplaint", None),
+                "status": issue.get("status", "Unknown")  # ✅ Include status field
+            })
 
-    results = []
-    for i in top_indices:
-        issue = filtered_issues[i]
-        results.append({
-            "issueId": issue["issueId"],
-            "title": issue["issueTitle"],
-            "description": issue["description"],  # ✅ Include list of descriptions with dates
-            "category": issue["category"],
-            "address": issue["address"],
-            "upvotes": issue.get("upvotes", 0),
-            "media": issue.get("media", []),
-            "similarity_score": round(similarities[i].item(), 4),
-            "dateOfComplaint": issue.get("dateOfComplaint", None),
-            "status": issue.get("status", "Unknown")  # ✅ Include status field
-        })
+        return jsonify({"similar_issues": results}), 200
 
-    # Return the response with CORS headers
-    response = jsonify({"similar_issues": results})
-    response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
-    return response, 200
-
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Internal server error."}), 500
 
 if __name__ == "__main__":
+    # ✅ Bind to `0.0.0.0` for deployment & change port if needed
     app.run(host="0.0.0.0", port=5000, debug=True)
