@@ -29,7 +29,8 @@ firebase_credentials = {
 
 
 app = Flask(__name__)
-CORS(app)  # Allow all origins (for development)
+CORS(app, origins=["https://fixmycity-deploy.onrender.com"])
+
 
 # Load fine-tuned SBERT model
 MODEL_PATH = os.path.join("model", "fine_tuned_sbert")
@@ -126,8 +127,16 @@ issues_data, issue_embeddings = load_issues_from_firestore()
 def home():
     return "Similarity Model is running!"
 
-@app.route("/find_similar", methods=["POST"])
+@app.route("/find_similar", methods=["POST", "OPTIONS"])
 def find_similar():
+    # Handle CORS preflight requests
+    if request.method == "OPTIONS":
+        response = jsonify({"message": "CORS preflight response"})
+        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        return response, 200
+
     data = request.get_json()
 
     title = data.get("issueTitle")
@@ -136,11 +145,15 @@ def find_similar():
     address = data.get("address")
 
     if not all([title, raw_description, category, address]):
-        return jsonify({"error": "Missing one or more required fields."}), 400
+        response = jsonify({"error": "Missing one or more required fields."})
+        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
+        return response, 400
 
     query_pincode = extract_pincode(address)
     if not query_pincode:
-        return jsonify({"error": "No valid pincode found in the address."}), 400
+        response = jsonify({"error": "No valid pincode found in the address."})
+        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
+        return response, 400
 
     # Flatten description for similarity search
     query_description_flat = flatten_description(raw_description)
@@ -158,7 +171,9 @@ def find_similar():
             filtered.append((i, issue))
 
     if not filtered:
-        return jsonify({"message": "No similar issues found in same category and pincode."}), 200
+        response = jsonify({"message": "No similar issues found in same category and pincode."})
+        response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
+        return response, 200
 
     # Prepare filtered embeddings
     filtered_indices = [i for i, _ in filtered]
@@ -190,7 +205,10 @@ def find_similar():
             "status": issue.get("status", "Unknown")  # ✅ Include status field
         })
 
-    return jsonify({"similar_issues": results}), 200
+    # Return the response with CORS headers
+    response = jsonify({"similar_issues": results})
+    response.headers.add("Access-Control-Allow-Origin", "https://fixmycity-deploy.onrender.com")
+    return response, 200
 
 
 if __name__ == "__main__":
