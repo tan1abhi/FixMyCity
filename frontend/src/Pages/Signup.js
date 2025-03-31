@@ -60,7 +60,6 @@ function Signup() {
 
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
-  const [authToken, setAuthToken] = useState("");
   
   const [showPassword, setShowPassword] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
