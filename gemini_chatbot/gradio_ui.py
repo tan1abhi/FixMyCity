@@ -48,7 +48,7 @@ def handle_gemini_reponse(chatbot):
 
 # Define Gradio interface
 with gr.Blocks() as demo:
-    chatbot = gr.Chatbot(label='Chat with Gemini', bubble_full_width=False)
+    chatbot = gr.Chatbot(label='Chat with Gemini', bubble_full_width=False, type='messages')
     msg = gr.Textbox(placeholder="Ask me something...", show_label=False)
     clear = gr.ClearButton([msg, chatbot])
 
