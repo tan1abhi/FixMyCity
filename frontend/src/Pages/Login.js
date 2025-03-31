@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import { handleError, handleSuccess } from './utils'
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { Link as RouterLink } from "react-router-dom";
 import { 
   Container, 
   Typography, 
@@ -247,7 +248,7 @@ const Login = () => {
 
               <Grid2 container justifyContent="center" sx={{ mt: 2, marginBottom: "1.5rem" }}>
                 <Grid2 item>
-                  <Link href="/signup" variant="body2">
+                  <Link component={RouterLink} to="/signup" variant="body2">
                     {"Don't have an account? Sign Up"}
                   </Link>
                 </Grid2>
