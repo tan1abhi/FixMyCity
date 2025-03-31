@@ -14,7 +14,7 @@ root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
+      <BrowserRouter basename="/">
         {/* ✅ Show "Loading..." while App is loading */}
         <Suspense fallback={<div>Loading...</div>}>
           <App />
