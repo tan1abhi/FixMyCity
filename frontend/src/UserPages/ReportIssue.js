@@ -335,7 +335,7 @@ const ReportIssue = () => {
 
     const fetchSimilarIssues = async () => {
         try {
-            const response = await fetch("http://localhost:5000/find_similar", {
+            const response = await fetch("https://fixmycity-similaritymodel.onrender.com/find_similar", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
