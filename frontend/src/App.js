@@ -56,9 +56,28 @@ function App() {
   const role = localStorage.getItem('role');
   const Layout = role === 'Authority' ? AuthorityLayout : UserLayout;
 
+  // Add this component to your imports or create a new file for it
+  const BrowserRefreshHandler = () => {
+    useEffect(() => {
+      // Check if we have a redirect URL in session storage
+      const redirectUrl = sessionStorage.getItem('redirectUrl');
+      if (redirectUrl) {
+        // Clear it so we don't redirect again
+        sessionStorage.removeItem('redirectUrl');
+        // Parse the URL to get the pathname
+        const url = new URL(redirectUrl);
+        // Use navigate to go to the correct route without a full page reload
+        window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+      }
+    }, []);
+  
+    return null;
+  };
+
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
         <div className="App">
+          <BrowserRefreshHandler />
           <ToastContainer />
           <RefreshHandler setIsAuthenticated={setIsAuthenticated} />
 
