@@ -122,6 +122,10 @@ def load_issues_from_firestore():
 # Preload issues on startup
 issues_data, issue_embeddings = load_issues_from_firestore()
 
+@app.route("/")
+def home():
+    return "Similarity Model is running!"
+
 @app.route("/find_similar", methods=["POST"])
 def find_similar():
     data = request.get_json()
