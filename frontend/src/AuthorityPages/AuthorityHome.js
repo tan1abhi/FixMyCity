@@ -344,7 +344,7 @@ function AuthorityHome() {
           }}
         >
           <iframe
-            src="http://127.0.0.1:8000/gradio/"
+            src="https://fixmycity-geminichatbot.onrender.com/gradio/"
             title="Gemini Chatbot"
             frameBorder="0"
             style={{ width: "100%", height: "100%" }}
