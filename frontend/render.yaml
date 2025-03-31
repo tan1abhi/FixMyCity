@@ -2,7 +2,13 @@ services:
   - type: web
     name: your-app-name
     env: static
-    staticPublishPath: build
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./build
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
     routes:
       - type: rewrite
         source: /*
