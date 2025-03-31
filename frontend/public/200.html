@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="%PUBLIC_URL%/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Web site created using create-react-app" />
+    <!-- Remove base tag if you added it -->
+    <script>
+      // Handle 404 redirects for client-side routing
+      (function() {
+        // Don't run this in development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
+        
+        // Get the current path
+        var path = window.location.pathname;
+        
+        // If we're not at the root and there's no file extension in the URL
+        if (path !== '/' && path.indexOf('.') === -1) {
+          // Store the full URL
+          sessionStorage.setItem('redirectUrl', window.location.href);
+          // Redirect to the root
+          window.location.href = '/';
+        }
+      })();
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <script src="https://apis.google.com/js/api.js"></script>
+    <title>FixMyCity</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
