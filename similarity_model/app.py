@@ -7,13 +7,10 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from flask_cors import CORS
 from dotenv import load_dotenv
-import traceback
+
 
 # Load .env file
 load_dotenv()
-
-# Set environment variable to disable tokenizers parallelism warning
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Get the Firebase credentials path from the environment
 firebase_credentials = {
@@ -35,13 +32,7 @@ CORS(app)  # Allow all origins (for development)
 
 # Load fine-tuned SBERT model
 MODEL_PATH = os.path.join("model", "fine_tuned_sbert")
-try:
-    print("[INFO] Loading SBERT Model...")
-    model = SentenceTransformer(MODEL_PATH, device="cpu")
-    print("[INFO] SBERT Model Loaded Successfully!")
-except Exception as e:
-    print(f"[ERROR] Failed to load the model: {str(e)}")
-    raise e
+model = SentenceTransformer(MODEL_PATH)
 
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate(firebase_credentials)
@@ -68,86 +59,137 @@ def load_issues_from_firestore():
     for doc in docs:
         data = doc.to_dict()
 
+        # Skip resolved issues
         if data.get("status", "").lower() == "resolved":
+            print(f"[SKIP] Resolved issue skipped: {doc.id}")
             continue
 
-        if all(k in data for k in ["issueTitle", "description", "category", "address"]):
+        required_fields = ["issueTitle", "description", "category", "address"]
+        missing_fields = [k for k in required_fields if not data.get(k)]
+
+        if not missing_fields:
             pincode = extract_pincode(data["address"])
             if pincode:
+                # 🔹 Ensure description is stored as a list of dictionaries
+                descriptions = data.get("description", [])
+                
+                # Convert all entries to dictionary format
+                extracted_descriptions = []
+                for d in descriptions:
+                    if isinstance(d, dict):
+                        extracted_descriptions.append({
+                            "text": d.get("text", ""),
+                            "date": d.get("date", None)
+                        })
+                    elif isinstance(d, str):
+                        extracted_descriptions.append({
+                            "text": d,
+                            "date": None  # No date available
+                        })
+
                 records.append({
                     "issueId": doc.id,
                     "issueTitle": data["issueTitle"],
-                    "description": flatten_description(data["description"]),
+                    "description": extracted_descriptions,
                     "category": data["category"],
                     "address": data["address"],
                     "pincode": pincode,
                     "upvotes": data.get("upvotes", 0),
                     "media": data.get("media", []),
-                    "status": data.get("status", "Unknown"),
+                    "dateOfComplaint": data.get("dateOfComplaint", None),
+                    "status": data.get("status", "Unknown")
                 })
+            else:
+                print(f"[SKIP] No pincode found for address: {data['address']}")
+        else:
+            print(f"[SKIP] Missing fields: {missing_fields} in document: {data}")
+
+    if not records:
+        print("[ERROR] No valid issues loaded from Firestore.")
+        return [], torch.tensor([])
 
     print(f"[INFO] Loaded {len(records)} issues from Firestore")
-    return records
+
+    # Create embeddings using flattened descriptions
+    combined_texts = [
+        r["issueTitle"] + " " + flatten_description(r["description"]) for r in records
+    ]
+    embeddings = model.encode(combined_texts, convert_to_tensor=True)
+
+    return records, embeddings
 
 # Preload issues on startup
 issues_data, issue_embeddings = load_issues_from_firestore()
 
+@app.route("/")
+def home():
+    return "Similarity Model is running!"
+
 @app.route("/find_similar", methods=["POST"])
 def find_similar():
-    try:
-        data = request.get_json()
-        title = data.get("issueTitle")
-        raw_description = data.get("description")
-        category = data.get("category")
-        address = data.get("address")
+    data = request.get_json()
 
-        if not all([title, raw_description, category, address]):
-            return jsonify({"error": "Missing required fields"}), 400
+    title = data.get("issueTitle")
+    raw_description = data.get("description")  # Original structure
+    category = data.get("category")
+    address = data.get("address")
 
-        query_pincode = extract_pincode(address)
-        if not query_pincode:
-            return jsonify({"error": "No valid pincode found"}), 400
+    if not all([title, raw_description, category, address]):
+        return jsonify({"error": "Missing one or more required fields."}), 400
 
-        query_description_flat = flatten_description(raw_description)
-        query_text = title + " " + query_description_flat
-        query_embedding = model.encode(query_text, convert_to_tensor=True)
+    query_pincode = extract_pincode(address)
+    if not query_pincode:
+        return jsonify({"error": "No valid pincode found in the address."}), 400
 
-        issues = load_issues_from_firestore()
-        filtered_issues = [issue for issue in issues if issue["category"] == category and issue["pincode"] == query_pincode]
+    # Flatten description for similarity search
+    query_description_flat = flatten_description(raw_description)
 
-        if not filtered_issues:
-            return jsonify({"message": "No similar issues found"}), 200
+    # Filter issues by category and pincode
+    filtered = []
+    for i, issue in enumerate(issues_data):
+        issue_address = issue.get("address", "")
+        issue_pincode = extract_pincode(issue_address)
+        issue_category = issue.get("category")
 
-        # Compute embeddings dynamically
-        filtered_texts = [issue["issueTitle"] + " " + issue["description"] for issue in filtered_issues]
-        filtered_embeddings = model.encode(filtered_texts, convert_to_tensor=True)
+        print(f"[DEBUG] Issue {i}: Category = {issue_category}, Pincode = {issue_pincode}")
 
-        similarities = util.cos_sim(query_embedding, filtered_embeddings)[0]
-        top_n = min(5, len(similarities))
-        top_indices = torch.topk(similarities, k=top_n).indices.tolist()
+        if issue_category == category and issue_pincode == query_pincode:
+            filtered.append((i, issue))
 
-        results = []
-        for i in top_indices:
-            issue = filtered_issues[i]
-            results.append({
-                "issueId": issue["issueId"],
-                "title": issue["issueTitle"],
-                "description": issue["description"],
-                "category": issue["category"],
-                "address": issue["address"],
-                "upvotes": issue.get("upvotes", 0),
-                "media": issue.get("media", []),
-                "similarity_score": round(similarities[i].item(), 4),
-                "status": issue.get("status", "Unknown"),
-            })
+    if not filtered:
+        return jsonify({"message": "No similar issues found in same category and pincode."}), 200
 
-        return jsonify({"similar_issues": results}), 200
+    # Prepare filtered embeddings
+    filtered_indices = [i for i, _ in filtered]
+    filtered_issues = [issue for _, issue in filtered]
+    filtered_embeddings = issue_embeddings[filtered_indices]
 
-    except Exception as e:
-        print(f"[ERROR] {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+    # Embed user input
+    query_text = title + " " + query_description_flat
+    query_embedding = model.encode(query_text, convert_to_tensor=True)
 
+    # Similarity calculation
+    similarities = util.cos_sim(query_embedding, filtered_embeddings)[0]
+    top_n = min(5, len(similarities))
+    top_indices = torch.topk(similarities, k=top_n).indices.tolist()
+
+    results = []
+    for i in top_indices:
+        issue = filtered_issues[i]
+        results.append({
+            "issueId": issue["issueId"],
+            "title": issue["issueTitle"],
+            "description": issue["description"],
+            "category": issue["category"],
+            "address": issue["address"],
+            "upvotes": issue.get("upvotes", 0),
+            "media": issue.get("media", []),
+            "similarity_score": round(similarities[i].item(), 4),
+            "dateOfComplaint": issue.get("dateOfComplaint", None),
+            "status": issue.get("status", "Unknown")
+        })
+
+    return jsonify({"similar_issues": results}), 200
 
 if __name__ == "__main__":
-    # ✅ Bind to `0.0.0.0` for deployment & change port if needed
     app.run(host="0.0.0.0", port=5000, debug=True)
