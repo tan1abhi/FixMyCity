@@ -13,6 +13,10 @@ CORS(app)  # Enable CORS to allow frontend requests
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
+@app.route("/")
+def home():
+    return "Summarization is running!"
+
 @app.route('/summarize', methods=['POST'])
 def summarize_comments():
     try:
