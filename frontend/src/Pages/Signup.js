@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ToastContainer } from "react-toastify";
 import { handleError, handleSuccess } from "./utils";
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { Link as RouterLink } from "react-router-dom";
 import { 
   Box, 
   Button, 
@@ -325,7 +326,7 @@ function Signup() {
 
                 <Grid2 container justifyContent="center" sx={{ mt: 2, marginBottom: "1.5rem" }}>
                   <Grid2 item>
-                    <Link href="/login" variant="body2">
+                    <Link component={RouterLink} to="/login" variant="body2">
                       {"Already have an account? Login"}
                     </Link>
                   </Grid2>
