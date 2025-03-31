@@ -11,5 +11,5 @@ services:
         value: no-cache
     routes:
       - type: rewrite
-        source: /*
+        source: /(.*)
         destination: /index.html
