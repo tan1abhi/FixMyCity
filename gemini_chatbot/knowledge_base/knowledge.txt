@@ -1,0 +1,300 @@
+1. How do I report an issue?
+Navigate to the 'Category' page, select a category, fill in details, and submit.
+
+2. What type of issues can I report?
+Road Maintenance, Garbage Disposal, Water & Sewage, Electricity, Public Transport, etc.
+
+3. Can I attach images while reporting an issue?
+Yes, you can upload images as proof of the issue.
+
+4. Can I edit or delete my reported issue?
+No, once an issue is submitted, it cannot be edited or deleted.
+
+5. What happens after I report an issue?
+The issue is added to 'View Issues' and authorities will review and take action.
+
+6. Will I be notified about my issue's status?
+Yes, you will receive notifications when authorities update the status.
+
+7. Where can I see my reported issues?
+Go to the 'View Issues' page, where all reported issues are listed.
+
+8. How do I track my issue's progress?
+Each issue has a status: Pending, In Progress, or Resolved.
+
+9. Can I search for issues reported in my area?
+Yes, you can filter issues based on location, category, and status.
+
+10. Who are the authorities managing the issues?
+Visit the 'Authorities' page to see assigned officials.
+
+11. How can I contact the assigned authority for my issue?
+Each issue is assigned an authority whose contact details are available.
+
+12. Where can I see the reported issues?
+Authorities can check all reported issues in the 'View Issues' section.
+
+13. How can I mark an issue as 'In Progress' or 'Resolved'?
+Authorities can update the issue status on the platform.
+
+14. How do I assign an issue to myself?
+Click on an issue and select 'Manage This Issue'.
+
+15. Can authorities add comments on an issue?
+Yes, they can add status updates and comments.
+
+16. How do I sign up?
+Go to 'Signup', fill in details, and click 'Sign Up'. Google authentication is also available.
+
+17. How do I log in?
+Go to 'Login', enter your credentials, and click 'Login'.
+
+18. I forgot my password. How do I reset it?
+Click 'Forgot Password', enter your email, and follow the instructions.
+
+19. How do I update my profile information?
+Navigate to 'Profile' and edit your details.
+
+20. Can I delete my account?
+No, users cannot delete their accounts from the app. Contact support.
+
+21. How can I contact support?
+Reach out via the 'Contact Us' page or email support.
+
+22. Can I report an issue anonymously?
+No, you need an account to report an issue.
+
+23. How do I check if my issue has been resolved?
+If the issue status is 'Resolved', the authorities have taken action.
+
+24. Can I report an issue in a different city?
+Yes, while reporting an issue, you can select a different city and location.
+
+25. What happens if my issue is ignored?
+If an issue remains unresolved, it will be escalated to higher authorities.
+
+26. Will there be a way to upvote important issues?
+Yes, a voting system will be added in future updates.
+
+27. Will there be a live chat with authorities?
+This feature is under consideration for direct user-authority communication.
+
+28. Who are you?
+I am the FixMyCity chatbot, here to help you report and track city issues.
+
+29. What is FixMyCity?
+FixMyCity is a platform for reporting and managing city-related issues.
+
+30. How can I report illegal dumping?
+Go to 'Report Issue' and select 'Illegal Dumping' as the category.
+
+31. Can I attach a video while reporting?
+Currently, only images can be attached.
+
+32. How do I report a streetlight outage?
+Go to 'Report Issue', choose 'Streetlight Outage', add location and details.
+
+33. How can I see the authorities managing my area?
+Visit the 'Authorities' page to view responsible officials.
+
+34. Can I filter issues by status?
+Yes, on the 'View Issue' page, you can filter by 'Pending', 'In Progress', or 'Resolved'.
+
+35. How do I log out?
+Click on your profile icon and select 'Log Out'.
+
+36. Can I reset my password without email verification?
+No, email verification is required for security.
+
+37. How do I change my city in the profile?
+Go to 'Profile' and update your city information.
+
+38. Can I add multiple contact numbers in the profile?
+No, only one contact number is allowed per profile.
+
+39. Is there a way to bookmark an issue?
+No, bookmarking issues is not supported.
+
+40. Can I download a report of all my issues?
+No, exporting reports is not available.
+
+41. How can I contact customer support?
+Use the 'Contact Us' page to reach support.
+
+42. What if I forget my username?
+Use your registered email to log in instead.
+
+43. Is there a way to preview my issue before submitting?
+No, issues are submitted directly.
+
+44. Can I add tags to issues?
+No, tagging issues is not supported.
+
+45. How do I know if an issue is duplicate?
+Duplicate issues are flagged by the system.
+
+46. Can I prioritize my reported issue?
+No, prioritization is handled by authorities.
+
+47. How long does it take to resolve an issue?
+Resolution time depends on the authorities.
+
+48. Can I report a missing person?
+No, FixMyCity is for city-related issues only.
+
+49. How do I update my phone number?
+Go to 'Profile' and update your phone number.
+
+50. Can I block specific authorities?
+No, blocking authorities is not allowed.
+
+51. What happens if I submit incorrect details?
+You cannot edit once submitted, but you can submit a new report.
+
+52. Can I share issues on social media?
+No, social media sharing is not supported.
+
+53. How do I view resolved issues only?
+Use the filter option in 'View Issue' to select 'Resolved'.
+
+54. Is there a notification system?
+Yes, you will receive notifications on issue updates.
+
+55. Can I view issues by location?
+Yes, you can filter by city and state.
+
+56. How can I rate an authority's response?
+Rating system is not available.
+
+57. Can I search issues by keywords?
+Yes, use the search bar on the 'View Issue' page.
+
+58. Do I need to verify my email during signup?
+Yes, email verification is mandatory.
+
+59. How do I know if my report was received?
+You will see a confirmation message after submission.
+
+60. Can I mark my issue as urgent?
+No, only authorities can prioritize issues.
+
+61. How do I filter issues by severity?
+Severity filtering is not supported.
+
+62. Can I reopen a closed issue?
+No, closed issues cannot be reopened.
+
+63. How do I delete my account?
+Contact support to request account deletion.
+
+64. Is FixMyCity free to use?
+Yes, it is free for all users.
+
+65. Can I request new features?
+Yes, use the 'Contact Us' page for feature requests.
+
+66. What languages does FixMyCity support?
+Currently, only English is supported.
+
+67. Can I report anonymously?
+No, you need an account to report issues.
+
+68. Is my data secure?
+Yes, FixMyCity uses encryption for data security.
+
+69. Can I view statistics on reported issues?
+No, statistics are not publicly available.
+
+70. How do I know if my issue is resolved?
+Check the status on the 'View Issue' page.
+
+71. Can I submit multiple issues at once?
+No, each issue must be reported separately.
+
+72. How do I update my profile picture?
+Profile picture upload is not supported.
+
+73. Can I view issues reported by others?
+Yes, all issues are publicly visible.
+
+74. How do I provide feedback?
+Use the 'Contact Us' page to submit feedback.
+
+75. How do I navigate back to the homepage?
+Click the FixMyCity logo.
+
+76. Can I report noise complaints?
+Yes, select 'Noise Complaint' in 'Report Issue'.
+
+77. How do I view trending issues?
+There is no trending section currently.
+
+78. Can I upload multiple images?
+Yes, you can add multiple images.
+
+79. How do I view the history of an issue?
+View the status updates under the issue details.
+
+80. Can I customize notifications?
+No, notification customization is not available.
+
+81. How do I report app bugs?
+Use the 'Contact Us' page.
+
+82. Can I view issues by category?
+Yes, use the filter options.
+
+83. Can I receive SMS notifications?
+No, only email and in-app notifications are available.
+
+84. How do I report potholes?
+Go to 'Report Issue', select 'Potholes', and add location details.
+
+85. Can I search for authorities by name?
+No, filtering by name is not supported.
+
+86. How do I clear cache or refresh data?
+You can clear browser cache or refresh the page.
+
+87. Can I download the app?
+FixMyCity is currently a web platform only.
+
+88. How do I suggest a new category?
+Use the 'Contact Us' page to submit suggestions.
+
+89. Can I block notifications?
+No, notification preferences cannot be customized.
+
+90. What happens if my report is ignored?
+You can contact support for further action.
+
+91. How do I sort issues by date?
+Use the sort option on the 'View Issue' page.
+
+92. Can I submit issues without images?
+Yes, images are optional but recommended.
+
+93. Is there a mobile version of FixMyCity?
+Yes, the platform is mobile-responsive.
+
+94. How do I know which authority is assigned?
+You can see the assigned authority on the 'View Issue' page.
+
+95. Can I request updates on my reported issue?
+No, you will receive automatic status updates.
+
+96. How do I share feedback on the platform?
+Use the 'Contact Us' page to submit feedback.
+
+97. Can I report broken traffic signals?
+Yes, select 'Traffic Signal Issue' in 'Report Issue'.
+
+98. How do I view closed issues?
+Filter by 'Resolved' in the 'View Issue' page.
+
+99. Can I customize my dashboard?
+No, customization is not available.
+
+100. How do I verify my email?
+You will receive a verification link during signup.
+

@@ -2,6 +2,10 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import RefreshHandler from './RefreshHandler';
 import { ToastContainer } from 'react-toastify';
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+import UserLayout from './UserPages/UserNavbar/Layout';
+import AuthorityLayout from './AuthorityPages/AuthorityNavbar/Layout';
 
 import Login from './Pages/Login';
 import Signup from './Pages/Signup';
@@ -11,111 +15,113 @@ import Authorities from './UserPages/Authorities';
 import Profile from './UserPages/Profile';
 import ReportIssue from './UserPages/ReportIssue';
 import ViewIssues from './UserPages/ViewIssues';
-import UserNavbar from './UserPages/Navbar';
+import IssueCategory from './UserPages/IssueCategory';
+import SimilarIssues from './UserPages/SimilarIssues';
+import ViewCategory from './UserPages/ViewCategory';
 
-import AdminHome from './AdminPages/AdminHome';
-import AdminNavbar from './AdminPages/AdminNavbar';
-import AdminProfile from './AdminPages/AdminProfile';
-import AdminView from './AdminPages/AdminView';
-import CurrentManaging from './AdminPages/CurrentManaging';
+import AuthorityHome from './AuthorityPages/AuthorityHome';
+import AuthorityProfile from './AuthorityPages/AuthorityProfile';
+import AuthorityView from './AuthorityPages/AuthorityView';
+import CurrentManaging from './AuthorityPages/CurrentManaging';
+import AuthorityCategory from './AuthorityPages/AuthorityCategory';
+import ManagingCategory from './AuthorityPages/ManagingCategory';
 
-import { GoogleOAuthProvider } from "@react-oauth/google";
-const CLIENT_ID = "685413249760-j3kd1971kh2dj2kdvsqlkkd3699spe62.apps.googleusercontent.com";
-
-
-function loadGapiAuth() {
-  window.gapi.load("auth2", () => {
-      window.gapi.auth2.init({
-          client_id: "685413249760-j3kd1971kh2dj2kdvsqlkkd3699spe62.apps.googleusercontent.com",
-          scope: "https://www.googleapis.com/auth/drive.readonly"
-      }).then(() => {
-          console.log("Google Auth initialized");
-      }).catch(err => console.error("Error initializing Google Auth", err));
-  });
-}
-
-
-
+const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
-  const location = useLocation();   // to get the url location of user
+  const location = useLocation();
 
-    useEffect(() => {
-      loadGapiAuth();
+  // Check authentication status on app load
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
   }, []);
 
   const PrivateRoute = ({ element, roles }) => {
     if (isAuthenticated === null) {
       return <div>Loading...</div>;
     }
-  
-    const role = localStorage.getItem('role'); // Get the role from localStorage
+
+    const role = localStorage.getItem('role');
     if (!isAuthenticated || (roles && !roles.includes(role))) {
-      return <Navigate to="/login" state={{ from: location }} />;
+      return <Navigate to="/login" state={{ from: location }} replace />;
     }
-  
+
     return element;
   };
-  
-  // Determine which Navbar to display
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+
   const role = localStorage.getItem('role');
-  const Navbar = role === 'Authority' ? AdminNavbar : UserNavbar;
+  const Layout = role === 'Authority' ? AuthorityLayout : UserLayout;
 
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
-    <div className="App">
-      <ToastContainer />
-      {isAuthenticated && <Navbar />}
-      <RefreshHandler setIsAuthenticated={setIsAuthenticated} />
-      <Routes>
-        <Route path='/' element={<Navigate to="login" />} />
-        <Route path='/login' element={isAuthenticated ? <Navigate to="/home" /> : <Login />} />
-        <Route path='/signup' element={isAuthenticated ? <Navigate to="/home" /> : <Signup />} />
+        <div className="App">
+          <ToastContainer />
+          <RefreshHandler setIsAuthenticated={setIsAuthenticated} />
 
-        <Route
-          path='/home'
-          element={
-            <PrivateRoute
-              element={
-                localStorage.getItem('role') === 'Authority' ? <AdminHome /> : <UserHome />
-              }
-            />
-          }
-        />
+          {isAuthPage ? (
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={isAuthenticated ? <Navigate to="/home" /> : <Login />} />
+              <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" /> : <Signup />} />
+            </Routes>
+          ) : (
+            <Layout>
+              <Routes>
+                <Route
+                  path="/"
+                  element={<Navigate to="/home" replace />}
+                />
+                <Route
+                  path="/home"
+                  element={
+                    <PrivateRoute
+                      element={role === 'Authority' ? <AuthorityHome /> : <UserHome />}
+                    />
+                  }
+                />
 
-        <Route
-          path='/profile'
-          element={
-            <PrivateRoute
-              element={
-                localStorage.getItem('role') === 'Authority' 
-                  ? <AdminProfile setIsAuthenticated={setIsAuthenticated} /> 
-                  : <Profile setIsAuthenticated={setIsAuthenticated} />
-              }
-            />
-          }
-        />
+                <Route
+                  path="/profile"
+                  element={
+                    <PrivateRoute
+                      element={
+                        role === 'Authority'
+                          ? <AuthorityProfile setIsAuthenticated={setIsAuthenticated} />
+                          : <Profile setIsAuthenticated={setIsAuthenticated} />
+                      }
+                    />
+                  }
+                />
 
-        <Route
-          path='/view-issues'
-          element={
-            <PrivateRoute
-              element={
-                localStorage.getItem('role') === 'Authority' 
-                  ? <AdminView setIsAuthenticated={setIsAuthenticated} /> 
-                  : <ViewIssues setIsAuthenticated={setIsAuthenticated} />
-              }
-            />
-          }
-        />
+                <Route
+                  path="/view-issues"
+                  element={
+                    <PrivateRoute
+                      element={
+                        role === 'Authority'
+                          ? <AuthorityView setIsAuthenticated={setIsAuthenticated} />
+                          : <ViewIssues setIsAuthenticated={setIsAuthenticated} />
+                      }
+                    />
+                  }
+                />
 
-        <Route path='/report-issue' element={<PrivateRoute element={<ReportIssue />} />} />
-        <Route path='/current-managing' element={<PrivateRoute element={<CurrentManaging />} />} />
-        <Route path='/authorities' element={<PrivateRoute element={<Authorities />} />} />
-
-      </Routes>
-    </div>
+                <Route path="/report-issue" element={<PrivateRoute element={<ReportIssue />} />} />
+                <Route path="/current-managing" element={<PrivateRoute element={<CurrentManaging />} />} />
+                <Route path="/authorities" element={<PrivateRoute element={<Authorities />} />} />
+                <Route path="/category" element={<PrivateRoute element={<IssueCategory />} />} />
+                <Route path="/view-category" element={<PrivateRoute element={<ViewCategory />} />} />
+                <Route path="/managing-category" element={<PrivateRoute element={<ManagingCategory />} />} />
+                <Route path="/authority-category" element={<PrivateRoute element={<AuthorityCategory />} />} />
+                <Route path="/similar-issues" element={<PrivateRoute element={<SimilarIssues />} />} />
+              </Routes>
+            </Layout>
+          )}
+        </div>
     </GoogleOAuthProvider>
   );
 }

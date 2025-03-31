@@ -1,0 +1,7 @@
+flask
+flask-cors
+transformers
+sentence-transformers
+torch
+firebase-admin
+python-dotenv

@@ -1,4 +1,3 @@
-// Profile.js
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
@@ -7,7 +6,6 @@ import { auth, db } from '../firebase/firebaseConfig';
 import { signOut, deleteUser } from "firebase/auth";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { State, City } from 'country-state-city';
-import './Profile.css';
 import {
   Box,
   Container,
@@ -19,10 +17,33 @@ import {
   FormControl,
   InputLabel,
   Card,
-  Grid2,
   CardContent,
   CardActions,
+  Grid,
+  Avatar,
+  Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Paper,
+  IconButton,
+  Tooltip,
+  Chip
 } from "@mui/material";
+import { 
+  PersonOutline, 
+  EditOutlined, 
+  LogoutOutlined, 
+  DeleteOutline, 
+  SaveOutlined, 
+  CancelOutlined, 
+  EmailOutlined, 
+  WorkOutlined, 
+  LocationCityOutlined, 
+  PublicOutlined 
+} from '@mui/icons-material';
 
 function Profile({ setIsAuthenticated }) {
   const [userData, setUserData] = useState({
@@ -38,6 +59,7 @@ function Profile({ setIsAuthenticated }) {
   const [selectedCity, setSelectedCity] = useState('');
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const navigate = useNavigate();
 
@@ -79,12 +101,11 @@ function Profile({ setIsAuthenticated }) {
   };
 
   const handleCancel = () => {
-    setSelectedState(userData.state); // Restore previous state
-    setSelectedCity(userData.city); // Restore previous city
+    setSelectedState(userData.state);
+    setSelectedCity(userData.city);
     setIsEditing(false);
   };
   
-
   const handleSave = async () => {
     try {
       const user = auth.currentUser;
@@ -149,126 +170,304 @@ function Profile({ setIsAuthenticated }) {
     }
   };
 
+  // Get initials for avatar (matching AdminProfile)
+  const getInitials = () => {
+    return userData.name ? userData.name.split(' ').map(name => name[0]).join('').toUpperCase() : 'U';
+  };
+
   return (
     <Box
       sx={{
-        background: "linear-gradient(180deg, #2c387e, #1769aa)",
+        background: "linear-gradient(135deg, #2c387e 0%, #1769aa 100%)",
         minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: 3,
+        padding: 2,
       }}
     >
-      <Container maxWidth="sm">
-        <Card
+      <Container maxWidth="md">
+        <Paper 
+          elevation={12}
           sx={{
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
-            boxShadow: "0px 3px 10px rgba(0, 0, 0, 0.2)",
-            borderRadius: "8px",
-            padding: 3,
+            backgroundColor: "rgba(255, 255, 255, 0.75)",
+            borderRadius: "5px",
+            overflow: "hidden",
           }}
         >
-          <CardContent >
-            <Typography variant="h5" align="center" fontWeight="bold" gutterBottom>
-              Profile
+          {/* Header Section */}
+          <Box
+            sx={{
+              backgroundColor: "primary.main",
+              py: 2,
+              textAlign: "center",
+              color: "white",
+            }}
+          >
+            <Typography variant="h5" fontWeight="bold">
+              My Profile
             </Typography>
+          </Box>
 
-            <Typography variant="body1" paddingLeft={20}>
-              <strong>Name:</strong> {userData.name}
-            </Typography>
-            <Typography variant="body1" paddingLeft={20} >
-              <strong>Email:</strong> {userData.email}
-            </Typography>
-            <Typography variant="body1" paddingLeft={20} >
-              <strong>Role:</strong> {userData.role}
-            </Typography>
+          <Grid container>
+            {/* Avatar Section */}
+            <Grid item xs={12} md={4} 
+              sx={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                alignItems: "center", 
+                justifyContent: "center",
+                p: 2,
+                borderRight: { md: "1px solid #eee" },
+                borderBottom: { xs: "1px solid #eee", md: "none" }
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  width: 90, 
+                  height: 90, 
+                  bgcolor: "secondary.main",
+                  fontSize: "2.2rem",
+                  mb: 1
+                }}
+              >
+                {getInitials()}
+              </Avatar>
+              
+              <Typography variant="h6" fontWeight="medium" gutterBottom>
+                {userData.name}
+              </Typography>
+              
+              <Chip 
+                label={userData.role || "User"} 
+                color="primary" 
+                size="small"
+                sx={{ mb: 1 }}
+              />
+              
+              <Typography variant="body2" color="primary">
+                {userData.email}
+              </Typography>
+            </Grid>
 
-            <Typography variant="body1" sx={{ paddingLeft: isEditing ? 0 : 20 }}>
-              <strong>State:</strong>{" "}
-              {isEditing ? (
-                <FormControl fullWidth variant="filled" sx={{ mt: 1 }}>
-                  <InputLabel>Select State</InputLabel>
-                  <Select
-                    value={selectedState}
-                    onChange={(e) => setSelectedState(e.target.value)}
-                    sx={{ backgroundColor: "#a9b8c2", borderRadius: 1 }}
-                  >
-                    {states.map((state) => (
-                      <MenuItem key={state.isoCode} value={state.name}>
-                        {state.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                userData.state
-              )}
-            </Typography>
+            {/* User Details Section */}
+            <Grid item xs={12} md={8}>
+              <CardContent sx={{ p: 2 }}>
+                {isEditing ? (
+                  <>
+                    <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
+                      Edit Location
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth variant="outlined" size="small">
+                          <InputLabel>State</InputLabel>
+                          <Select
+                            value={selectedState}
+                            onChange={(e) => setSelectedState(e.target.value)}
+                            label="State"
+                          >
+                            {states.map((state) => (
+                              <MenuItem key={state.isoCode} value={state.name}>
+                                {state.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth variant="outlined" size="small">
+                          <InputLabel>City</InputLabel>
+                          <Select
+                            value={selectedCity}
+                            onChange={(e) => setSelectedCity(e.target.value)}
+                            label="City"
+                            disabled={!selectedState}
+                          >
+                            {cities.map((city) => (
+                              <MenuItem key={city.name} value={city.name}>
+                                {city.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+                      Personal Information
+                    </Typography>
+                    
+                    <Box sx={{ mb: 2 }}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <PersonOutline color="primary" sx={{ mr: 1, fontSize: "1.2rem" }} />
+                            <Box>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Full Name
+                              </Typography>
+                              <Typography variant="body2">
+                                {userData.name || "Not provided"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <EmailOutlined color="primary" sx={{ mr: 1, fontSize: "1.2rem" }} />
+                            <Box>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Email Address
+                              </Typography>
+                              <Typography variant="body2">
+                                {userData.email || "Not provided"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <WorkOutlined color="primary" sx={{ mr: 1, fontSize: "1.2rem" }} />
+                            <Box>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                Role
+                              </Typography>
+                              <Typography variant="body2">
+                                {userData.role || "User"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <PublicOutlined color="primary" sx={{ mr: 1, fontSize: "1.2rem" }} />
+                            <Box>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                State
+                              </Typography>
+                              <Typography variant="body2">
+                                {userData.state || "Not specified"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <LocationCityOutlined color="primary" sx={{ mr: 1, fontSize: "1.2rem" }} />
+                            <Box>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                City
+                              </Typography>
+                              <Typography variant="body2">
+                                {userData.city || "Not specified"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </>
+                )}
 
-            <Typography variant="body1" sx={{ paddingLeft: isEditing ? 0 : 20 }}>
-              <strong>City:</strong>{" "}
-              {isEditing ? (
-                <FormControl fullWidth variant="filled" sx={{ mt: 1 }}>
-                  <InputLabel>Select City</InputLabel>
-                  <Select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    sx={{ backgroundColor: "#a9b8c2", borderRadius: 1 }}
-                  >
-                    {cities.map((city) => (
-                      <MenuItem key={city.name} value={city.name}>
-                        {city.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                userData.city
-              )}
-            </Typography>
-          </CardContent>
+                <Divider sx={{ my: 2 }} />
+                
+                {/* Action Buttons */}
+                <Box sx={{ 
+                  display: "flex", 
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 1
+                }}>
+                  {isEditing ? (
+                    <>
+                      <Button 
+                        variant="outlined" 
+                        color="primary" 
+                        onClick={handleSave}
+                        startIcon={<SaveOutlined />}
+                        size="small"
+                      >
+                        Save Changes
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        onClick={handleCancel}
+                        startIcon={<CancelOutlined />}
+                        size="small"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="outlined" 
+                        color="primary" 
+                        onClick={handleEdit}
+                        startIcon={<EditOutlined />}
+                        size="small"
+                      >
+                        Edit Profile
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        color="secondary" 
+                        onClick={handleLogout}
+                        startIcon={<LogoutOutlined />}
+                        size="small"
+                      >
+                        Logout
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        color="error" 
+                        onClick={() => setOpenDeleteDialog(true)}
+                        startIcon={<DeleteOutline />}
+                        size="small"
+                      >
+                        Delete Account
+                      </Button>
+                    </>
+                  )}
+                </Box>
+              </CardContent>
+            </Grid>
+          </Grid>
+        </Paper>
 
-          <CardActions sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {isEditing ? (
-              <Grid2 container spacing={2}>
-                <Grid2 item xs={6}>
-                  <Button fullWidth variant="contained" color="primary" onClick={handleSave}>
-                    Save
-                  </Button>
-                </Grid2>
-                <Grid2 item xs={6}>
-                  <Button fullWidth variant="contained" color="secondary" onClick={handleCancel}>
-                    Cancel
-                  </Button>
-                </Grid2>
-              </Grid2>
-            ) : (
-              <Grid2 container spacing={6} sx={{ mt: 1 }}>
-                <Grid2 item xs={4}>
-                  <Button fullWidth variant="contained" color="primary" onClick={handleEdit}>
-                    Edit
-                  </Button>
-                </Grid2>
-                <Grid2 item xs={4}>
-                  <Button fullWidth variant="contained" color="secondary" onClick={handleLogout}>
-                    Logout
-                  </Button>
-                </Grid2>
-                <Grid2 item xs={4}>
-                  <Button fullWidth variant="contained" color="error" onClick={handleDeleteUser}>
-                    Delete
-                  </Button>
-                </Grid2>
-              </Grid2>
-            )}
-          </CardActions>
-        </Card>
+        {/* Delete Account Confirmation Dialog */}
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+        >
+          <DialogTitle>
+            {"Are you sure you want to delete your account?"}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This action cannot be undone. All of your personal data will be permanently removed from our servers. Are you sure you want to proceed?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteUser} color="error" autoFocus>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <ToastContainer />
       </Container>
     </Box>
-
-
   );
 }
 
