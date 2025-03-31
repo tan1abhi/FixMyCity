@@ -335,7 +335,7 @@ const CurrentManaging = () => {
         setLoading(true);
     
         try {
-            const response = await axios.get(`http://localhost:8080/analyze-sentiment/${issueId}`);
+            const response = await axios.get(`https://fixmycity-sentimentanalysis.onrender.com/analyze-sentiment/${issueId}`);
             console.log('Sentiment API Response:', response.data);
     
             if (response.data) {
