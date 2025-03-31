@@ -12,5 +12,6 @@ def home():
 app = gr.mount_gradio_app(app, demo, path="/gradio")
 
 if __name__ == "__main__":
-    # Run FastAPI on port 8000
-    uvicorn.run("run:app", host="127.0.0.1", port=8000, reload=True)
+    # Run FastAPI on all network interfaces for deployment
+    uvicorn.run("run:app", host="0.0.0.0", port=8000, reload=True)
+
