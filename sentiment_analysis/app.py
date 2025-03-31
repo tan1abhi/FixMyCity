@@ -34,6 +34,9 @@ cred = credentials.Certificate(firebase_credentials)  # Add your Firestore servi
 initialize_app(cred)
 db = firestore.client()
 
+@app.route("/")
+def home():
+    return "Sentiment Analysis is running!"
 
 @app.route('/analyze-sentiment/<issue_id>', methods=['GET'])
 def analyze_sentiment(issue_id):
@@ -109,7 +112,7 @@ def analyze_sentiment(issue_id):
         return jsonify({"message": "Error analyzing sentiment", "error": str(e)}), 500
 
 
-genai.configure(api_key="AIzaSyBHEjIaqpHstQmhkPuAAL1f-FWnmFSlpc0")
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # Initialize the generative model with the specified model name.
 # This model will be used to process user inputs and generate responses.
