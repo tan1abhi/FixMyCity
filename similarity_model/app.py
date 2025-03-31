@@ -37,7 +37,7 @@ CORS(app)  # Allow all origins (for development)
 MODEL_PATH = os.path.join("model", "fine_tuned_sbert")
 try:
     print("[INFO] Loading SBERT Model...")
-    model = SentenceTransformer(MODEL_PATH)
+    model = SentenceTransformer(MODEL_PATH, device="cpu")
     print("[INFO] SBERT Model Loaded Successfully!")
 except Exception as e:
     print(f"[ERROR] Failed to load the model: {str(e)}")
@@ -68,64 +68,26 @@ def load_issues_from_firestore():
     for doc in docs:
         data = doc.to_dict()
 
-        # Skip resolved issues
         if data.get("status", "").lower() == "resolved":
-            print(f"[SKIP] Resolved issue skipped: {doc.id}")
             continue
 
-        required_fields = ["issueTitle", "description", "category", "address"]
-        missing_fields = [k for k in required_fields if not data.get(k)]
-
-        if not missing_fields:
+        if all(k in data for k in ["issueTitle", "description", "category", "address"]):
             pincode = extract_pincode(data["address"])
             if pincode:
-                # 🔹 Ensure description is stored as a list of dictionaries
-                descriptions = data.get("description", [])
-                
-                # Convert all entries to dictionary format
-                extracted_descriptions = []
-                for d in descriptions:
-                    if isinstance(d, dict):  # ✅ Already correct format
-                        extracted_descriptions.append({
-                            "text": d.get("text", ""),
-                            "date": d.get("date", None)
-                        })
-                    elif isinstance(d, str):  # 🔹 Convert from string to dictionary
-                        extracted_descriptions.append({
-                            "text": d,
-                            "date": None  # No date available
-                        })
-
                 records.append({
                     "issueId": doc.id,
                     "issueTitle": data["issueTitle"],
-                    "description": extracted_descriptions,  # ✅ Always list of dicts now
+                    "description": flatten_description(data["description"]),
                     "category": data["category"],
                     "address": data["address"],
                     "pincode": pincode,
                     "upvotes": data.get("upvotes", 0),
                     "media": data.get("media", []),
-                    "dateOfComplaint": data.get("dateOfComplaint", None),
-                    "status": data.get("status", "Unknown")  # ✅ Include status
+                    "status": data.get("status", "Unknown"),
                 })
-            else:
-                print(f"[SKIP] No pincode found for address: {data['address']}")
-        else:
-            print(f"[SKIP] Missing fields: {missing_fields} in document: {data}")
-
-    if not records:
-        print("[ERROR] No valid issues loaded from Firestore.")
-        return [], torch.tensor([])
 
     print(f"[INFO] Loaded {len(records)} issues from Firestore")
-
-    # Create embeddings using flattened descriptions
-    combined_texts = [
-        r["issueTitle"] + " " + flatten_description(r["description"]) for r in records
-    ]
-    embeddings = model.encode(combined_texts, convert_to_tensor=True)
-
-    return records, embeddings
+    return records
 
 # Preload issues on startup
 issues_data, issue_embeddings = load_issues_from_firestore()
@@ -134,47 +96,32 @@ issues_data, issue_embeddings = load_issues_from_firestore()
 def find_similar():
     try:
         data = request.get_json()
-
         title = data.get("issueTitle")
-        raw_description = data.get("description")  # Original structure
+        raw_description = data.get("description")
         category = data.get("category")
         address = data.get("address")
 
         if not all([title, raw_description, category, address]):
-            return jsonify({"error": "Missing one or more required fields."}), 400
+            return jsonify({"error": "Missing required fields"}), 400
 
         query_pincode = extract_pincode(address)
         if not query_pincode:
-            return jsonify({"error": "No valid pincode found in the address."}), 400
+            return jsonify({"error": "No valid pincode found"}), 400
 
-        # Flatten description for similarity search
         query_description_flat = flatten_description(raw_description)
-
-        # Filter issues by category and pincode
-        filtered = []
-        for i, issue in enumerate(issues_data):
-            issue_address = issue.get("address", "")
-            issue_pincode = extract_pincode(issue_address)
-            issue_category = issue.get("category")
-
-            print(f"[DEBUG] Issue {i}: Category = {issue_category}, Pincode = {issue_pincode}")
-
-            if issue_category == category and issue_pincode == query_pincode:
-                filtered.append((i, issue))
-
-        if not filtered:
-            return jsonify({"message": "No similar issues found in same category and pincode."}), 200
-
-        # Prepare filtered embeddings
-        filtered_indices = [i for i, _ in filtered]
-        filtered_issues = [issue for _, issue in filtered]
-        filtered_embeddings = issue_embeddings[filtered_indices]
-
-        # Embed user input
         query_text = title + " " + query_description_flat
         query_embedding = model.encode(query_text, convert_to_tensor=True)
 
-        # Similarity calculation
+        issues = load_issues_from_firestore()
+        filtered_issues = [issue for issue in issues if issue["category"] == category and issue["pincode"] == query_pincode]
+
+        if not filtered_issues:
+            return jsonify({"message": "No similar issues found"}), 200
+
+        # Compute embeddings dynamically
+        filtered_texts = [issue["issueTitle"] + " " + issue["description"] for issue in filtered_issues]
+        filtered_embeddings = model.encode(filtered_texts, convert_to_tensor=True)
+
         similarities = util.cos_sim(query_embedding, filtered_embeddings)[0]
         top_n = min(5, len(similarities))
         top_indices = torch.topk(similarities, k=top_n).indices.tolist()
@@ -185,22 +132,21 @@ def find_similar():
             results.append({
                 "issueId": issue["issueId"],
                 "title": issue["issueTitle"],
-                "description": issue["description"],  # ✅ Include list of descriptions with dates
+                "description": issue["description"],
                 "category": issue["category"],
                 "address": issue["address"],
                 "upvotes": issue.get("upvotes", 0),
                 "media": issue.get("media", []),
                 "similarity_score": round(similarities[i].item(), 4),
-                "dateOfComplaint": issue.get("dateOfComplaint", None),
-                "status": issue.get("status", "Unknown")  # ✅ Include status field
+                "status": issue.get("status", "Unknown"),
             })
 
         return jsonify({"similar_issues": results}), 200
 
     except Exception as e:
-        print(f"[ERROR] Unexpected error: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        return jsonify({"error": "Internal server error."}), 500
+        print(f"[ERROR] {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
 
 if __name__ == "__main__":
     # ✅ Bind to `0.0.0.0` for deployment & change port if needed
