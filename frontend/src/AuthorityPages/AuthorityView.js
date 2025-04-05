@@ -77,45 +77,32 @@ const AuthorityView = () => {
     const [selectedCity, setSelectedCity] = useState('');
     const [cities, setCities] = useState([]);
 
+    // Category
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const selectedCategory = queryParams.get("category");
 
-    // for fetching the department
+    // Fetch user location first
     useEffect(() => {
-        const fetchAuthorities = async () => {
-            if (!filteredIssues || filteredIssues.length === 0) return;
-
-            const updatedIssues = await Promise.all(
-                filteredIssues.map(async (issue) => {
-                    if (!issue.managingAuthorities) return issue;
-
-                    const updatedAuthorities = await Promise.all(
-                        issue.managingAuthorities.map(async (authority) => {
-                            try {
-                                const userRef = doc(db, "users", authority.Id);
-                                const userSnap = await getDoc(userRef);
-
-                                return userSnap.exists()
-                                    ? { ...authority, department: userSnap.data().department || "Unknown" }
-                                    : { ...authority, department: "Unknown" };
-                            } catch (error) {
-                                console.error("Error fetching department:", error);
-                                return { ...authority, department: "Error loading department" };
-                            }
-                        })
-                    );
-
-                    return { ...issue, managingAuthorities: updatedAuthorities };
-                })
-            );
-
-            setFilteredIssues((prevIssues) => {
-                const isEqual = JSON.stringify(prevIssues) === JSON.stringify(updatedIssues);
-                return isEqual ? prevIssues : updatedIssues;
-            });
+        const fetchUserLocation = async () => {
+            try {
+                if (!userId) return; // Ensure user is logged in
+                const userRef = doc(db, "users", userId);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    setUserState(userData.state || '');
+                    setUserCity(userData.city || '');
+                    
+                    // Set the initial city filter to the user's city
+                    setSelectedCity(userData.city || ''); 
+                }
+            } catch (error) {
+                console.error("Error fetching user location:", error);
+            }
         };
-
-        fetchAuthorities(); // Fetch department data for authorities
-    }, [filteredIssues]); // Run this only when filteredIssues change
-    
+        fetchUserLocation();
+    }, [userId]);
 
     // helper function to get state code
     const getStateCode = (stateName) => {
@@ -127,8 +114,8 @@ const AuthorityView = () => {
 
     // city fetch
     useEffect(() => {
-        console.log("UserState:", userState); // Debugging log
-        console.log("Selected State:", selectedState); // Debugging log
+        console.log("UserState:", userState);
+        console.log("Selected State:", selectedState);
 
         let currentStateName = selectedState || userState;
         let currentStateCode = getStateCode(currentStateName);
@@ -136,9 +123,8 @@ const AuthorityView = () => {
         if (currentStateCode) {
             try {
                 const stateCities = City.getCitiesOfState("IN", currentStateCode);
-                console.log("Fetched Cities:", stateCities); // Debugging log
+                console.log("Fetched Cities:", stateCities);
                 
-                // Ensure stateCities is an array before setting
                 if (Array.isArray(stateCities) && stateCities.length > 0) {
                     setCities(stateCities);
                 } else {
@@ -155,156 +141,58 @@ const AuthorityView = () => {
         }
     }, [selectedState, userState]);
 
-
-    useEffect(() => {
-        const fetchUserLocation = async () => {
-            try {
-                if (!userId) return; // Ensure user is logged in
-                const userRef = doc(db, "users", userId);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    setUserState(userData.state || '');
-                    setUserCity(userData.city || '');
-                    
-                    // Set the initial city filter to the user's city
-                    // This ensures that by default, only issues from the user's city are shown
-                    setSelectedCity(userData.city || ''); 
-                }
-            } catch (error) {
-                console.error("Error fetching user location:", error);
-            }
-        };
-        fetchUserLocation();
-    }, [userId]);
-
-
-    // Category
-    const location = useLocation();
-    const queryParams = new URLSearchParams(location.search);
-    const selectedCategory = queryParams.get("category");
-
-    useEffect(() => {
-        const fetchIssues = async () => {
-            try {
-                if (!userState) return; // Wait until userState is available
-    
-                const issuesCollection = collection(db, "issues");
-                const querySnapshot = await getDocs(issuesCollection);
-    
-                const issuesData = querySnapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(issue => 
-                        issue.state === userState && 
-                        (!selectedCity || issue.city === selectedCity) // Additional city filter
-                    );
-    
-                setIssues(issuesData);
-            } catch (error) {
-                console.error("Error fetching issues:", error);
-            }
-        };
-    
-        fetchIssues();
-    }, [userState, selectedCity]);
-
-
-    // Real-time listener with city filtering
+    // Main issues fetching logic with real-time listener
     useEffect(() => {
         if (!userState) return; 
 
-        const unsubscribe = onSnapshot(collection(db, "issues"), (snapshot) => {
-            const updatedIssues = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
-                .filter(issue => 
-                    issue.state === userState && 
-                    (!selectedCity || issue.city === selectedCity) // Real-time city filtering
-                );
+        const issuesQuery = collection(db, "issues");
+        
+        const unsubscribe = onSnapshot(issuesQuery, async (snapshot) => {
+            try {
+                // Get basic issue data
+                const issuesData = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(issue => 
+                        issue.state === userState && 
+                        (!selectedCity || issue.city === selectedCity)
+                    );
+                
+                // Fetch department data for each issue's authorities
+                const issuesWithDepartments = await Promise.all(
+                    issuesData.map(async (issue) => {
+                        if (!issue.managingAuthorities) return issue;
 
-            setIssues(updatedIssues);
+                        const updatedAuthorities = await Promise.all(
+                            issue.managingAuthorities.map(async (authority) => {
+                                try {
+                                    const userRef = doc(db, "users", authority.Id);
+                                    const userSnap = await getDoc(userRef);
+
+                                    return userSnap.exists()
+                                        ? { ...authority, department: userSnap.data().department || "Unknown" }
+                                        : { ...authority, department: "Unknown" };
+                                } catch (error) {
+                                    console.error("Error fetching department:", error);
+                                    return { ...authority, department: "Error loading department" };
+                                }
+                            })
+                        );
+
+                        return { ...issue, managingAuthorities: updatedAuthorities };
+                    })
+                );
+                
+                setIssues(issuesWithDepartments);
+            } catch (error) {
+                console.error("Error processing issues:", error);
+            }
         });
 
         return () => unsubscribe(); // Cleanup listener on unmount
-    }, [userState, selectedCity]); 
-    
+    }, [userState, selectedCity]);
 
-
-
+    // Apply filters and sorting whenever underlying data or filter settings change
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "issues"), (snapshot) => {
-            const updatedIssues = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
-            setIssues(updatedIssues);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    // Category and Filtering
-    useEffect(() => {
-        let filtered = [...issues];
-
-        if (selectedCategory) {
-            filtered = filtered.filter(issue => issue.category === selectedCategory);
-        }
-
-        // Now apply other filters here (e.g., status, search, etc.)
-
-        setFilteredIssues(filtered); // Update filtered issues after category and other filters
-    }, [issues, selectedCategory]); // Trigger this effect whenever issues or selectedCategory changes
-
-
-    // Fetch all issues from the backend
-    const fetchIssues = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            const userRole = localStorage.getItem("role");
-            const defaultState = localStorage.getItem("state");
-            const defaultCity = localStorage.getItem("city");
-    
-            if (!token) {
-                console.error("User not authenticated.");
-                return;
-            }
-    
-            let issuesQuery = collection(db, "issues");
-    
-            if (userRole === "authority" && defaultState && defaultCity) {
-                console.log("Applying filters for authority role...");
-                issuesQuery = query(
-                    issuesQuery,
-                    where("state", "==", defaultState),
-                    where("city", "==", defaultCity)
-                );
-            }
-    
-            console.log("Fetching issues from Firestore...");
-            const querySnapshot = await getDocs(issuesQuery);
-            console.log("Query Snapshot Size:", querySnapshot.size);
-    
-            const issuesData = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
-    
-            console.log("Final Issues Data:", issuesData);
-    
-            setIssues(issuesData || []);
-            setFilteredIssues(issuesData || []);
-    
-        } catch (error) {
-            console.error("Error fetching issues from Firestore:", error);
-            setIssues([]);
-            setFilteredIssues([]);
-        }
-    };
-    
-    
-
-    // Function to apply filters and sorting
-    const applyFiltersAndSort = () => {
         let filtered = [...issues];
 
         // Apply category filter
@@ -316,8 +204,8 @@ const AuthorityView = () => {
         if (searchQuery) {
             filtered = filtered.filter(issue => {
                 const combinedDescription = Array.isArray(issue.description)
-                    ? issue.description.map(desc => desc.text).join(" ") // Merge all descriptions
-                    : issue.description || ""; // Fallback if not an array
+                    ? issue.description.map(desc => desc.text).join(" ")
+                    : issue.description || "";
                 
                 return (
                     issue.issueTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -326,6 +214,7 @@ const AuthorityView = () => {
             });
         }
 
+        // Filter by city if selected
         if (selectedCity) {
             filtered = filtered.filter(issue => issue.city === selectedCity);
         }
@@ -343,36 +232,12 @@ const AuthorityView = () => {
         }
 
         setFilteredIssues(filtered);
-    };
+    }, [issues, selectedCategory, selectedCity, status, sortBy, searchQuery]);
 
-    // Automatically apply filters when any filter changes
-    useEffect(() => {
-        applyFiltersAndSort();
-    }, [userState, selectedCity, status, sortBy, searchQuery, selectedCategory, issues]);
-    
-
-
-    // Search box to search Issues by their title
+    // Function to handle search input
     const handleSearch = (e) => {
-        const query = e.target.value.toLowerCase();
-        setSearchQuery(query);
-    
-        const filtered = issues.filter(issue => {
-            const combinedDescription = Array.isArray(issue.description)
-                ? issue.description.map(desc => desc.text).join(" ") // Merge all description texts
-                : issue.description || ""; // Fallback if it's not an array
-            
-            return (
-                issue.issueTitle.toLowerCase().includes(query) ||
-                combinedDescription.toLowerCase().includes(query)
-            );
-        });
-    
-        setFilteredIssues(filtered);
+        setSearchQuery(e.target.value.toLowerCase());
     };
-    
-    
-
 
     // Function to handle media click
     const handleMediaClick = (mediaUrl) => {
@@ -384,33 +249,32 @@ const AuthorityView = () => {
         setSelectedMedia(null);
     };
 
-
-    // Function to "Manage" a issue
+    // Function to "Manage" an issue
     const handleManageAuthority = async (issueId) => {
         const name = localStorage.getItem('loggedInUser'); // Authority name
         const userId = localStorage.getItem('userId'); // Authority ID
     
         try {
-            const issueRef = doc(firestore, "issues", issueId); // Reference to the issue document
+            const issueRef = doc(db, "issues", issueId);
     
             await updateDoc(issueRef, {
-                managingAuthorities: arrayUnion({ Authority: name, Id: userId }) // Add the new authority
+                managingAuthorities: arrayUnion({ Authority: name, Id: userId })
             });
     
             handleSuccess("Authority added successfully.");
-            fetchIssues(); // Re-fetch issues to reflect the update
+            // No need to call fetchIssues here - real-time listener will update
         } catch (error) {
             console.error("Error managing authority:", error);
             handleError("An error occurred while managing the authority.");
         }
     };
     
-    // Function to "Unmanage" a issue
+    // Function to "Unmanage" an issue
     const handleUnmanageAuthority = async (issueId) => {
         const userId = localStorage.getItem('userId'); // Authority ID
     
         try {
-            const issueRef = doc(firestore, "issues", issueId); // Reference to the issue document
+            const issueRef = doc(db, "issues", issueId);
             const issueSnap = await getDoc(issueRef);
     
             if (issueSnap.exists()) {
@@ -420,7 +284,7 @@ const AuthorityView = () => {
                 await updateDoc(issueRef, { managingAuthorities: updatedAuthorities });
     
                 handleSuccess("Authority removed successfully.");
-                fetchIssues(); // Re-fetch issues to reflect the update
+                // No need to call fetchIssues here - real-time listener will update
             } else {
                 handleError("Issue not found.");
             }
@@ -429,98 +293,81 @@ const AuthorityView = () => {
             handleError("An error occurred while unmanaging the authority.");
         }
     };
-    
 
-    // Map
-        
-        // Handle map load and set initial position
-        const onMapLoad = useCallback((mapInstance) => {
-            console.log("Map loaded:", mapInstance);
-            setMap(mapInstance);
-        }, []);
-    
-        // Handle map unmount
-        const onMapUnmount = useCallback(() => {
-            setMap(null);
-        }, []);
-    
-        // Update the map with location
-        const updateMapWithLocation = (location) => {
-            if (!map || !location?.lat || !location?.lng) return;
-        
-            const latLng = new window.google.maps.LatLng(location.lat, location.lng);
-    
-            console.log("Updating map with location:", location);
-            console.log("Map instance:", map);
-    
-        
-            if (marker) {
-                marker.setMap(null);
-            }
-        
-            const newMarker = new window.google.maps.Marker({
-                position: latLng,
-                map,
-                title: 'Issue Location',
-                draggable: true,
-            });
-        
-            setMarker(newMarker);
-        
-            map.panTo(latLng);
-            map.setZoom(16);
-        };
-        
-        // Handle view location on map button click
-        const handleViewOnMap = (location) => {
-            console.log("Button clicked. Location:", location);
-            setSelectedLocation(location);
-        };
-        
-        useEffect(() => {
-            if (map && selectedLocation) {
-                updateMapWithLocation(selectedLocation);
-            }
-        }, [map]);
-    
-        useEffect(() => {
-            if (map && selectedLocation) {
-                updateMapWithLocation(selectedLocation);
-            }
-        }, [selectedLocation]);
-    
-        const defaultCenter = { lat: 28.6139, lng: 77.2090 }; // New Delhi
-    
-        // Map Ends
-    
-    
+    // Map functions
+    const onMapLoad = useCallback((mapInstance) => {
+        console.log("Map loaded:", mapInstance);
+        setMap(mapInstance);
+    }, []);
 
+    const onMapUnmount = useCallback(() => {
+        setMap(null);
+    }, []);
+
+    const updateMapWithLocation = (location) => {
+        if (!map || !location?.lat || !location?.lng) return;
+    
+        const latLng = new window.google.maps.LatLng(location.lat, location.lng);
+
+        console.log("Updating map with location:", location);
+        console.log("Map instance:", map);
+
+        if (marker) {
+            marker.setMap(null);
+        }
+    
+        const newMarker = new window.google.maps.Marker({
+            position: latLng,
+            map,
+            title: 'Issue Location',
+            draggable: true,
+        });
+    
+        setMarker(newMarker);
+    
+        map.panTo(latLng);
+        map.setZoom(16);
+    };
+
+    const handleViewOnMap = (location) => {
+        console.log("Button clicked. Location:", location);
+        setSelectedLocation(location);
+    };
+
+    useEffect(() => {
+        if (map && selectedLocation) {
+            updateMapWithLocation(selectedLocation);
+        }
+    }, [map, selectedLocation]);
+
+    const defaultCenter = { lat: 28.6139, lng: 77.2090 }; // New Delhi
+
+    // UI state
     const [showFilters, setShowFilters] = useState(false);
     const [showSortOptions, setShowSortOptions] = useState(false);
     const [showMap, setShowMap] = useState(false);    
     const topSectionRef = useRef(null);
     const [topSectionHeight, setTopSectionHeight] = useState(0);
     const [expandedDescriptions, setExpandedDescriptions] = useState({});
-
     const [expandedIssueIds, setExpandedIssueIds] = useState(new Set());
-    
+    const [activeTabs, setActiveTabs] = useState({});
     
     useEffect(() => {
-    const node = topSectionRef.current;
-    if (!node) return;
+        const node = topSectionRef.current;
+        if (!node) return;
 
-    const resizeObserver = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (entry?.contentRect?.height) {
-        setTopSectionHeight(entry.contentRect.height);
-        }
-    });
+        const resizeObserver = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (entry?.contentRect?.height) {
+                setTopSectionHeight(entry.contentRect.height);
+            }
+        });
 
-    resizeObserver.observe(node);
+        resizeObserver.observe(node);
 
-    return () => {
-        resizeObserver.disconnect();
-    };
+        return () => {
+            resizeObserver.disconnect();
+        };
     }, []);
 
     const stringToColor = (name) => {
@@ -538,8 +385,6 @@ const AuthorityView = () => {
             [issueId]: !prev[issueId],
         }));
     };
-    
-    const [activeTabs, setActiveTabs] = useState({});
     
     const handleTabChange = (event, newValue, issueId) => {
         setActiveTabs(prevState => ({
