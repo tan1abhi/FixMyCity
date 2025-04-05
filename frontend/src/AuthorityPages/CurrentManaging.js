@@ -92,7 +92,6 @@ const CurrentManaging = () => {
     const [neutralCount, setNeutralCount] = useState(0);
     const [overallScore, setOverallScore] = useState(0);
 
-
     const name = localStorage.getItem('loggedInUser');
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('role');
@@ -108,6 +107,75 @@ const CurrentManaging = () => {
     const [selectedCity, setSelectedCity] = useState('');
     const [cities, setCities] = useState([]);
 
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const selectedCategory = queryParams.get("category");
+    
+    // Fetch user location and set initial filters
+    useEffect(() => {
+        const fetchUserLocation = async () => {
+            try {
+                if (!userId) return; // Ensure user is logged in
+                const userRef = doc(db, "users", userId);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const state = userData.state || '';
+                    const city = userData.city || '';
+                    
+                    // Set user location state variables
+                    setUserState(state);
+                    setUserCity(city);
+                    
+                    // Set the initial filters to the user's state and city
+                    setSelectedState(state);
+                    setSelectedCity(city);
+                    
+                    // Now fetch issues with location filtering
+                    fetchIssues(state, city);
+                }
+            } catch (error) {
+                console.error("Error fetching user location:", error);
+            }
+        };
+        
+        fetchUserLocation();
+    }, [userId]);
+
+    // helper function to get state code
+    const getStateCode = (stateName) => {
+        const state = State.getStatesOfCountry("IN").find(
+            state => state.name.toLowerCase() === stateName.toLowerCase()
+        );
+        return state ? state.isoCode : null;
+    };
+
+    // city fetch based on selected state
+    useEffect(() => {
+        let currentStateName = selectedState || userState;
+        let currentStateCode = getStateCode(currentStateName);
+        
+        if (currentStateCode) {
+            try {
+                const stateCities = City.getCitiesOfState("IN", currentStateCode);
+                
+                // Ensure stateCities is an array before setting
+                if (Array.isArray(stateCities) && stateCities.length > 0) {
+                    setCities(stateCities);
+                } else {
+                    console.warn("No cities found for state:", currentStateName);
+                    setCities([]);
+                }
+            } catch (error) {
+                console.error("Error fetching cities:", error);
+                setCities([]);
+            }
+        } else {
+            console.warn("No valid state code found for:", currentStateName);
+            setCities([]);
+        }
+    }, [selectedState, userState]);
 
     // for fetching the department
     useEffect(() => {
@@ -144,166 +212,43 @@ const CurrentManaging = () => {
             });
         };
 
-        fetchAuthorities(); // Fetch department data for authorities
-    }, [filteredIssues]); // Run this only when filteredIssues change
-    
-
-    // helper function to get state code
-    const getStateCode = (stateName) => {
-        const state = State.getStatesOfCountry("IN").find(
-            state => state.name.toLowerCase() === stateName.toLowerCase()
-        );
-        return state ? state.isoCode : null;
-    };
-
-    // city fetch
-    useEffect(() => {
-        console.log("UserState:", userState); // Debugging log
-        console.log("Selected State:", selectedState); // Debugging log
-
-        let currentStateName = selectedState || userState;
-        let currentStateCode = getStateCode(currentStateName);
-        
-        if (currentStateCode) {
-            try {
-                const stateCities = City.getCitiesOfState("IN", currentStateCode);
-                console.log("Fetched Cities:", stateCities); // Debugging log
-                
-                // Ensure stateCities is an array before setting
-                if (Array.isArray(stateCities) && stateCities.length > 0) {
-                    setCities(stateCities);
-                } else {
-                    console.warn("No cities found for state:", currentStateName);
-                    setCities([]);
-                }
-            } catch (error) {
-                console.error("Error fetching cities:", error);
-                setCities([]);
-            }
-        } else {
-            console.warn("No valid state code found for:", currentStateName);
-            setCities([]);
-        }
-    }, [selectedState, userState]);
-    
-
-    useEffect(() => {
-        const fetchUserLocation = async () => {
-            try {
-                if (!userId) return; // Ensure user is logged in
-                const userRef = doc(db, "users", userId);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    setUserState(userData.state || '');
-                    setUserCity(userData.city || '');
-                    
-                    // Set the initial city filter to the user's city
-                    // This ensures that by default, only issues from the user's city are shown
-                    setSelectedCity(userData.city || ''); 
-                    
-                    // Fetch issues after setting the user's city
-                    fetchIssues();
-                }
-            } catch (error) {
-                console.error("Error fetching user location:", error);
-            }
-        };
-        fetchUserLocation();
-    }, [userId]);
-
-
-    // Department fetching for managing authorities
-    useEffect(() => {
-        const fetchAuthoritiesDepartments = async () => {
-            if (!filteredIssues?.length) return;
-
-            try {
-                const updatedIssues = await Promise.all(
-                    filteredIssues.map(async (issue) => {
-                        if (!issue.managingAuthorities?.length) return issue;
-
-                        const updatedAuthorities = await Promise.all(
-                            issue.managingAuthorities.map(async (authority) => {
-                                try {
-                                    const userRef = doc(db, "users", authority.Id);
-                                    const userSnap = await getDoc(userRef);
-
-                                    return userSnap.exists()
-                                        ? { 
-                                            ...authority, 
-                                            department: userSnap.data().department || "Unknown" 
-                                        }
-                                        : { 
-                                            ...authority, 
-                                            department: "Unknown" 
-                                        };
-                                } catch (error) {
-                                    console.error(`Error fetching department for authority ${authority.Id}:`, error);
-                                    return { 
-                                        ...authority, 
-                                        department: "Error loading department" 
-                                    };
-                                }
-                            })
-                        );
-
-                        return { 
-                            ...issue, 
-                            managingAuthorities: updatedAuthorities 
-                        };
-                    })
-                );
-
-                // Only update if there are actual changes
-                setFilteredIssues(prevIssues => {
-                    const isEqual = JSON.stringify(prevIssues) === JSON.stringify(updatedIssues);
-                    return isEqual ? prevIssues : updatedIssues;
-                });
-            } catch (error) {
-                console.error("Error in fetchAuthoritiesDepartments:", error);
-            }
-        };
-
-        fetchAuthoritiesDepartments();
+        fetchAuthorities();
     }, [filteredIssues]);
 
-
-    const location = useLocation();
-    const queryParams = new URLSearchParams(location.search);
-    const selectedCategory = queryParams.get("category");
-
-    
-    // Real-time updates from Firestore
+    // Real-time updates from Firestore with proper state and city filtering
     useEffect(() => {
+        if (!userState) return; // Wait until we have user state
+        
         const unsubscribe = onSnapshot(collection(db, "issues"), (snapshot) => {
             const updatedIssues = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
             }));
             
-            // Filter real-time updates with city filtering
+            // Filter issues by user's authority, category, state, and city
             const managedIssues = updatedIssues.filter(issue => 
                 Array.isArray(issue.managingAuthorities) &&
                 issue.managingAuthorities.some(authority => authority.Id === userId) &&
                 (selectedCategory ? issue.category === selectedCategory : true) &&
+                (!selectedState || issue.state === selectedState) && // State filtering
                 (!selectedCity || issue.city === selectedCity) // City filtering
             );
             
             setIssues(managedIssues);
             setFilteredIssues(managedIssues);
         });
+        
         return () => unsubscribe();
-    }, [userId, selectedCategory, selectedCity]);
+    }, [userId, selectedCategory, selectedState, selectedCity, userState]);
 
-
-    // Fetch all issues from the backend
-    const fetchIssues = async () => {
+    // Fetch all issues from the backend with location filtering
+    const fetchIssues = async (state = selectedState, city = selectedCity) => {
         try {
             if (!userId) {
                 console.error("User ID not found in localStorage.");
                 return;
             }
+            
             const issuesCollection = collection(db, "issues");
             const querySnapshot = await getDocs(issuesCollection);
             const allIssues = querySnapshot.docs.map(doc => ({
@@ -311,15 +256,13 @@ const CurrentManaging = () => {
                 ...doc.data()
             }));
             
-            // Filter issues by:
-            // 1. User is in managing authorities
-            // 2. Matches selected category
-            // 3. Matches selected city (if set)
+            // Filter issues by user's authority, category, state, and city
             const managedIssues = allIssues.filter(issue => 
                 Array.isArray(issue.managingAuthorities) &&
                 issue.managingAuthorities.some(authority => authority.Id === userId) &&
                 (selectedCategory ? issue.category === selectedCategory : true) &&
-                (!selectedCity || issue.city === selectedCity) // City filtering
+                (!state || issue.state === state) && // State filtering
+                (!city || issue.city === city) // City filtering
             );
             
             setIssues(managedIssues);
@@ -329,6 +272,79 @@ const CurrentManaging = () => {
         }
     };
 
+    // Function to apply filters and sorting
+    const applyFiltersAndSort = () => {
+        let filtered = [...issues];
+        
+        // Apply category filter
+        if (selectedCategory) {
+            filtered = filtered.filter(issue => issue.category === selectedCategory);
+        }
+        
+        // Apply state filter
+        if (selectedState) {
+            filtered = filtered.filter(issue => issue.state === selectedState);
+        }
+        
+        // Apply city filter
+        if (selectedCity) {
+            filtered = filtered.filter(issue => issue.city === selectedCity);
+        }
+        
+        // Apply search filter
+        if (searchQuery) {
+            filtered = filtered.filter(issue => {
+                const combinedDescription = Array.isArray(issue.description)
+                    ? issue.description.map(desc => desc.text).join(" ") // Merge all descriptions
+                    : issue.description || ""; // Fallback if not an array
+                
+                return (
+                    issue.issueTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    combinedDescription.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            });
+        }
+        
+        // Filter by status
+        if (status) {
+            filtered = filtered.filter(issue => issue.status === status);
+        }
+        
+        // Sort issues
+        if (sortBy === 'mostRelevant') {
+            filtered.sort((a, b) => b.upvotes - a.upvotes);
+        } else if (sortBy === 'mostRecent') {
+            filtered.sort((a, b) => new Date(b.dateOfComplaint) - new Date(a.dateOfComplaint));
+        }
+        
+        setFilteredIssues(filtered);
+    };
+
+    // Automatically apply filters when any filter changes
+    useEffect(() => {
+        applyFiltersAndSort();
+    }, [issues, selectedState, selectedCity, status, sortBy, searchQuery, selectedCategory]);
+
+    // Search box to search Issues by Title and description
+    const handleSearch = (e) => {
+        const query = e.target.value.toLowerCase();
+        setSearchQuery(query);
+        
+        // Apply filters will be triggered by the useEffect above
+    };
+
+    // Handle state selection change
+    const handleStateChange = (e) => {
+        const newState = e.target.value;
+        setSelectedState(newState);
+        // Reset city when state changes
+        setSelectedCity('');
+    };
+
+    // Handle city selection change
+    const handleCityChange = (e) => {
+        setSelectedCity(e.target.value);
+    };
 
     // Analyse sentiment of the feedbacks
     const fetchSentiment = async (issueId) => {
@@ -362,112 +378,6 @@ const CurrentManaging = () => {
             setLoading(false);
         }
     };
-    
-    
- 
-    // Fetch issues on initial load or when token/role changes
-    useEffect(() => {
-        if (!token || !userRole) return;
-        fetchIssues();
-    }, [token, userRole, selectedCategory]);
-
-
-    // Function to apply filters and sorting
-    const applyFiltersAndSort = () => {
-        let filtered = [...issues];
-        
-        // Apply category filter
-        if (selectedCategory) {
-            filtered = filtered.filter(issue => issue.category === selectedCategory);
-        }
-        
-        // Apply city filter
-        if (selectedCity) {
-            filtered = filtered.filter(issue => issue.city === selectedCity);
-        }
-        
-        // Apply search filter
-        if (searchQuery) {
-            filtered = filtered.filter(issue =>
-                issue.issueTitle.toLowerCase().includes(searchQuery) ||
-                issue.description.toLowerCase().includes(searchQuery)
-            );
-        }
-        
-        // Filter by status
-        if (status) {
-            filtered = filtered.filter(issue => issue.status === status);
-        }
-        
-        // Sort issues
-        if (sortBy === 'mostRelevant') {
-            filtered.sort((a, b) => b.upvotes - a.upvotes);
-        } else if (sortBy === 'mostRecent') {
-            filtered.sort((a, b) => new Date(b.dateOfComplaint) - new Date(a.dateOfComplaint));
-        }
-        
-        setFilteredIssues(filtered);
-    };
-
-    // Automatically apply filters when any filter changes
-    useEffect(() => {
-        let filtered = [...issues];
-        
-        // City filter
-        if (selectedCity) {
-            filtered = filtered.filter(issue => issue.city === selectedCity);
-        }
-        
-        // Text search filter
-        if (searchQuery) {
-            filtered = filtered.filter(issue => {
-                const combinedDescription = Array.isArray(issue.description)
-                    ? issue.description.map(desc => desc.text).join(" ") // Merge all descriptions
-                    : issue.description || ""; // Fallback if not an array
-                
-                return (
-                    issue.issueTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    combinedDescription.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-            });
-        }
-        
-        // Status filter
-        if (status) {
-            filtered = filtered.filter(issue => issue.status === status);
-        }
-        
-        // Sorting
-        if (sortBy === 'mostRelevant') {
-            filtered.sort((a, b) => b.upvotes - a.upvotes);
-        } else if (sortBy === 'mostRecent') {
-            filtered.sort((a, b) => new Date(b.dateOfComplaint) - new Date(a.dateOfComplaint));
-        }
-        
-        setFilteredIssues(filtered);
-    }, [issues, selectedCity, status, sortBy, searchQuery, selectedCategory]);
-
-
-    // Search box to search Issues by Title
-    const handleSearch = (e) => {
-        const query = e.target.value.toLowerCase();
-        setSearchQuery(query);
-    
-        const filtered = issues.filter(issue => {
-            const combinedDescription = Array.isArray(issue.description)
-                ? issue.description.map(desc => desc.text).join(" ") // Merge all description texts
-                : issue.description || ""; // Fallback if it's not an array
-            
-            return (
-                issue.issueTitle.toLowerCase().includes(query) ||
-                combinedDescription.toLowerCase().includes(query)
-            );
-        });
-    
-        setFilteredIssues(filtered);
-    };
-    
-
 
     // Function to handle media click
     const handleMediaClick = (mediaUrl) => {
@@ -478,7 +388,6 @@ const CurrentManaging = () => {
     const closeMediaModal = () => {
         setSelectedMedia(null);
     };
-
 
     // Change the status of an Issue
     const handleStatusChange = async (issueId, newStatus) => {
@@ -505,9 +414,6 @@ const CurrentManaging = () => {
             handleError("Failed to update status");
         }
     };
-    
-    
-
 
     // "Manage" a Issue
     const handleManageAuthority = async (issueId) => {
@@ -530,37 +436,36 @@ const CurrentManaging = () => {
             handleSuccess("Authority added successfully");
     
             // Re-fetch issues to reflect the update
-            fetchIssues();
+            fetchIssues(selectedState, selectedCity);
         } catch (error) {
             console.error("Error managing authority:", error);
             handleError("An error occurred while managing the authority.");
         }
     };
     
-    
     // "Unmanage" a Issue
     const handleUnmanageAuthority = async (issueId) => {
-            const userId = localStorage.getItem('userId'); // Authority ID
-        
-            try {
-                const issueRef = doc(firestore, "issues", issueId); // Reference to the issue document
-                const issueSnap = await getDoc(issueRef);
-        
-                if (issueSnap.exists()) {
-                    const issueData = issueSnap.data();
-                    const updatedAuthorities = issueData.managingAuthorities.filter(authority => authority.Id !== userId);
-        
-                    await updateDoc(issueRef, { managingAuthorities: updatedAuthorities });
-        
-                    handleSuccess("Authority removed successfully.");
-                    fetchIssues(); // Re-fetch issues to reflect the update
-                } else {
-                    handleError("Issue not found.");
-                }
-            } catch (error) {
-                console.error("Error unmanaging authority:", error);
-                handleError("An error occurred while unmanaging the authority.");
+        const userId = localStorage.getItem('userId'); // Authority ID
+    
+        try {
+            const issueRef = doc(firestore, "issues", issueId); // Reference to the issue document
+            const issueSnap = await getDoc(issueRef);
+    
+            if (issueSnap.exists()) {
+                const issueData = issueSnap.data();
+                const updatedAuthorities = issueData.managingAuthorities.filter(authority => authority.Id !== userId);
+    
+                await updateDoc(issueRef, { managingAuthorities: updatedAuthorities });
+    
+                handleSuccess("Authority removed successfully.");
+                fetchIssues(selectedState, selectedCity); // Re-fetch issues to reflect the update
+            } else {
+                handleError("Issue not found.");
             }
+        } catch (error) {
+            console.error("Error unmanaging authority:", error);
+            handleError("An error occurred while unmanaging the authority.");
+        }
     };
     
     // Handle adding an announcement
@@ -568,22 +473,22 @@ const CurrentManaging = () => {
         try {
             const userName = localStorage.getItem("loggedInUser"); // Get user name
             const announcementText = announcement.trim(); // Ensure announcement isn't empty
-    
+
             if (!userName || !announcementText) {
                 handleError("Please enter an announcement.");
                 return;
             }
-    
+
             console.log(`Adding announcement for issue ${issueId}: "${announcementText}"`);
-    
+
             const issueRef = doc(firestore, "issues", issueId);
-    
+
             // Fetch existing issue data to check if it exists
             const issueSnapshot = await getDoc(issueRef);
             if (!issueSnapshot.exists()) {
                 throw new Error("Issue not found.");
             }
-    
+
             // Add the new announcement to Firestore
             await updateDoc(issueRef, {
                 announcements: arrayUnion({
@@ -592,39 +497,19 @@ const CurrentManaging = () => {
                     timestamp: new Date().toISOString() // Store timestamp
                 })
             });
-    
+
             console.log("Announcement added successfully!");
-    
             handleSuccess("Announcement added successfully!");
-    
-            // Update issues state to reflect the new announcement
-            setIssues((prevIssues) =>
-                prevIssues.map((issue) =>
-                    issue.id === issueId
-                        ? {
-                            ...issue,
-                            announcements: [
-                                ...(issue.announcements || []),
-                                {
-                                    userName,
-                                    comment: announcementText,
-                                    timestamp: new Date().toISOString(),
-                                }
-                            ]
-                        }
-                        : issue
-                )
-            );
-    
+            
+            // Remove this local state update since Firestore listener will handle it
+            // setIssues((prevIssues) => ...)
+            
             setAnnouncement(""); // Clear the input field
         } catch (error) {
             console.error("Error adding announcement:", error);
             handleError("An unexpected error occurred. Please try again.");
         }
     };
-    
-
-
 
     // Toggle comment visibility for a specific issue
     const toggleComments = (issueId) => {
@@ -650,9 +535,7 @@ const CurrentManaging = () => {
         }));
     };
 
-
     // Map
-            
     // Handle map load and set initial position
     const onMapLoad = useCallback((mapInstance) => {
         console.log("Map loaded:", mapInstance);
@@ -672,7 +555,6 @@ const CurrentManaging = () => {
 
         console.log("Updating map with location:", location);
         console.log("Map instance:", map);
-
     
         if (marker) {
             marker.setMap(null);
@@ -701,22 +583,11 @@ const CurrentManaging = () => {
         if (map && selectedLocation) {
             updateMapWithLocation(selectedLocation);
         }
-    }, [map]);
-
-    useEffect(() => {
-        if (map && selectedLocation) {
-            updateMapWithLocation(selectedLocation);
-        }
-    }, [selectedLocation]);
+    }, [map, selectedLocation]);
 
     const defaultCenter = { lat: 28.6139, lng: 77.2090 }; // New Delhi
 
-    // Map Ends
-    
-    
-
-        
-    
+    // UI States
     const [showFilters, setShowFilters] = useState(false);
     const [showSortOptions, setShowSortOptions] = useState(false);
     const [showMap, setShowMap] = useState(false);    
@@ -725,40 +596,36 @@ const CurrentManaging = () => {
     const [showAllDescriptions, setShowAllDescriptions] = useState(false);
     const [expandedDescriptions, setExpandedDescriptions] = useState({});
     const [showDetails, setShowDetails] = useState(false);
-
     const [expandedIssueIds, setExpandedIssueIds] = useState(new Set());
-        
-        
-            const toggleIssueDetails = (issueId) => {
-            setExpandedIssueIds(prev => {
-                const updated = new Set(prev);
-                if (updated.has(issueId)) {
+    
+    const toggleIssueDetails = (issueId) => {
+        setExpandedIssueIds(prev => {
+            const updated = new Set(prev);
+            if (updated.has(issueId)) {
                 updated.delete(issueId); // collapse
-                } else {
+            } else {
                 updated.add(issueId); // expand
-                }
-                return updated;
-            });
-            };
-
-
+            }
+            return updated;
+        });
+    };
 
     useEffect(() => {
-    const node = topSectionRef.current;
-    if (!node) return;
+        const node = topSectionRef.current;
+        if (!node) return;
 
-    const resizeObserver = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (entry?.contentRect?.height) {
-        setTopSectionHeight(entry.contentRect.height);
-        }
-    });
+        const resizeObserver = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (entry?.contentRect?.height) {
+                setTopSectionHeight(entry.contentRect.height);
+            }
+        });
 
-    resizeObserver.observe(node);
+        resizeObserver.observe(node);
 
-    return () => {
-        resizeObserver.disconnect();
-    };
+        return () => {
+            resizeObserver.disconnect();
+        };
     }, []);
 
     const stringToColor = (name) => {
@@ -776,7 +643,6 @@ const CurrentManaging = () => {
             [issueId]: !prev[issueId],
         }));
     };
-
 
     const [activeTabs, setActiveTabs] = useState({});
     
@@ -1147,7 +1013,16 @@ const CurrentManaging = () => {
                             onChange={(event, newValue) => handleTabChange(event, newValue, issue.id)}
                             variant="scrollable"
                             scrollButtons="auto"
-                            allowScrollButtonsMobile={true} // Ensures scroll buttons appear on mobile
+                            allowScrollButtonsMobile={true}
+                            TabScrollButtonProps={{
+                                // This ensures scroll buttons work correctly by forcing them to be visible
+                                disableRipple: false,
+                                sx: {
+                                    '&.Mui-disabled': {
+                                        opacity: 0.3,
+                                    }
+                                }
+                            }}
                             sx={{
                                 marginTop: "1rem",
                                 backgroundColor: "rgba(255, 255, 255, 0.8)",
@@ -1155,26 +1030,27 @@ const CurrentManaging = () => {
                                 display: "flex",
                                 justifyContent: "center",
                                 "& .MuiTabs-flexContainer": {
-                                    justifyContent: "center"
+                                    justifyContent: "flex-start" // Changed from center to flex-start
                                 },
                                 // Make scroll buttons more visible with higher contrast
                                 "& .MuiTabs-scrollButtons": {
                                     opacity: 1,
                                     color: "rgba(0, 0, 0, 0.8)",
-                                    // Ensure buttons are always visible regardless of zoom level
-                                    visibility: "visible !important",
+                                    // Use !important less aggressively
+                                    visibility: "visible",
                                     // Add a background to make them stand out
                                     backgroundColor: "rgba(240, 240, 240, 0.6)",
                                     borderRadius: "50%",
-                                    margin: "0 4px"
+                                    margin: "0 4px",
+                                    zIndex: 2 // Ensure buttons appear above the tabs
                                 },
                                 // Add a hover effect
                                 "& .MuiTabs-scrollButtons:hover": {
                                     backgroundColor: "rgba(220, 220, 220, 0.9)",
                                 },
-                                // Override the default behavior that hides buttons
+                                // Override the default behavior that hides buttons but less aggressively
                                 "& .MuiTabs-scrollButtons.Mui-disabled": {
-                                    opacity: 0.3, // Still show disabled buttons but with reduced opacity
+                                    opacity: 0.3,
                                 }
                             }}
                         >
