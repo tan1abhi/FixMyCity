@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { handleError, handleSuccess } from '../Pages/utils';
 import { auth, db } from '../firebase/firebaseConfig';
-import { signOut, deleteUser } from "firebase/auth";
+import { signOut, deleteUser, getAuth } from "firebase/auth";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { State, City } from 'country-state-city';
 import {
@@ -147,26 +147,53 @@ function Profile({ setIsAuthenticated }) {
     }
   };
 
+  useEffect(() => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+  
+    if (user) {
+      const userRef = doc(db, "users", user.uid);
+  
+      getDoc(userRef)
+        .then((docSnap) => {
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching user data:", error);
+        });
+    }
+  }, []);
+  
   const handleDeleteUser = async () => {
     try {
-      const user = auth.currentUser;
+      const auth = getAuth();
+      const user = auth.currentUser; // Get currently logged-in user
+
       if (!user) {
-        handleError("User is not logged in.");
+        handleError("You are not logged in. Please log in again.");
         return;
       }
 
-      const userDocRef = doc(db, "users", user.uid);
-      await deleteDoc(userDocRef);
-      await deleteUser(user);
+      const userId = user.uid; // Firebase Auth User ID
 
-      localStorage.clear();
-      setIsAuthenticated(false);
-      handleSuccess("Account deleted successfully!");
+      // Step 1: Delete user from Firestore users collection
+      await deleteDoc(doc(db, "users", userId)); 
 
-      navigate('/login');
+      // Step 2: Delete user from Firebase Authentication
+      await deleteUser(user); 
+
+      handleSuccess("Account deleted successfully");
+
+      setTimeout(() => {
+        localStorage.clear();
+        setIsAuthenticated(false);
+        navigate("/login");
+      }, 2000);
     } catch (error) {
-      console.error("Error deleting account:", error);
-      handleError("Failed to delete account.");
+      console.error("Error during delete request:", error);
+      handleError(error.message || "An error occurred while deleting the account");
     }
   };
 
