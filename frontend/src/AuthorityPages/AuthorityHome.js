@@ -135,12 +135,23 @@ const FloatingButton = styled(Button)({
   animation: "pulse 2s infinite",
 });
 
+// Chat Window Wrapper
+const ChatWindowWrapper = styled(Box)({
+  width: "100%",
+  height: "100%",
+  backgroundColor: "white",
+  boxShadow: "0px 5px 25px rgba(0, 0, 0, 0.2)",
+  borderRadius: "16px",
+  overflow: "hidden",
+  display: "flex",
+  flexDirection: "column",
+});
+
 function AuthorityHome() {
   const [showChatbot, setShowChatbot] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const featureSectionRef = useRef(null);
-
 
   // Toast based on location state
   useEffect(() => {
@@ -151,6 +162,20 @@ function AuthorityHome() {
       else toast.info(toastData.message);
     }
   }, [location.state]);
+
+  // Prevent body scrolling when chatbot is open
+  useEffect(() => {
+    if (showChatbot) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    
+    // Cleanup function
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [showChatbot]);
 
   const handleScroll = () => {
     featureSectionRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -188,7 +213,7 @@ function AuthorityHome() {
   };
 
   return (
-    <div>
+    <Box sx={{ overflow: "hidden" }}> {/* Main container with overflow hidden */}
       {/* Hero Section with Parallax */}
       <Box
         sx={{
@@ -211,7 +236,7 @@ function AuthorityHome() {
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          viewport={{ once: false, amount: 0.5 }} // 👈 enables re-animation when re-entering
+          viewport={{ once: false, amount: 0.5 }}
         >
           <Typography
             variant="h2"
@@ -243,7 +268,7 @@ function AuthorityHome() {
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            viewport={{ once: false, amount: 0.5 }} // 👈 same here
+            viewport={{ once: false, amount: 0.5 }}
           >
             <CustomButton onClick={handleScroll}>
               Go To Dashboard
@@ -252,9 +277,8 @@ function AuthorityHome() {
         </motion.div>
       </Box>
 
-
       {/* Features Section with Improved Cards */}
-      <Container sx={{ my: 8 }}>
+      <Container sx={{ my: 8, py: 4 }} ref={featureSectionRef}>
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -298,7 +322,7 @@ function AuthorityHome() {
                   <img src={item.img} alt={item.title} />
                   <Box className="overlay">
                     <Typography className="overlayText">
-                      {item.icon} {item.title}
+                      {item.title}
                     </Typography>
                     <Typography className="overlayDesc">
                       {item.description}
@@ -318,7 +342,7 @@ function AuthorityHome() {
         💬
       </FloatingButton>
 
-      {/* Chatbot Panel with Animation */}
+      {/* Chatbot Panel with Animation - Fixed to prevent scrollbar issues */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.8 }}
         animate={showChatbot ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 20, scale: 0.8 }}
@@ -344,14 +368,14 @@ function AuthorityHome() {
           }}
         >
           <iframe
-            src="https://fixmycity-geminichatbot.onrender.com/gradio/"
+            src="http://127.0.0.1:8000/gradio/"
             title="Gemini Chatbot"
             frameBorder="0"
             style={{ width: "100%", height: "100%" }}
           />
         </Box>
       </motion.div>
-    </div>
+    </Box>
   );
 }
 
