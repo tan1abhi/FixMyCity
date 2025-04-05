@@ -125,39 +125,39 @@ const FeedbackManage = ({
         {/* Analyze Sentiment Button */}
         <Tooltip title="Analyze Feedback Sentiment">
           <Button
-            startIcon={<AnalyticsIcon />}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AnalyticsIcon />}
             variant="outlined"
             size="small"
             onClick={() => {
-              fetchSentiment(issue.id); 
+              fetchSentiment(issue.id);
               setOpenSentimentDialog(true);
             }}
             disabled={loading}
             sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              whiteSpace: 'nowrap',
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              borderColor: '#0763a0',
-              backgroundColor: '#0763a0',
-              boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
-              color: 'white',
-              '&:hover': {
-                backgroundColor: '#2392cf',
-                color: '#fff',
-                boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.3)',
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+              padding: "6px 12px",
+              fontSize: "0.8rem",
+              borderColor: "#0763a0",
+              backgroundColor: "#0763a0",
+              boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+              color: "white",
+              "&:hover": {
+                backgroundColor: "#2392cf",
+                color: "#fff",
+                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.3)",
               },
-              '&:focus': {
-                outline: 'none',
-                boxShadow: '0 0 5px rgba(23, 105, 158, 0.6)',
+              "&:focus": {
+                outline: "none",
+                boxShadow: "0 0 5px rgba(23, 105, 158, 0.6)",
               },
-              '&:disabled': {
-                backgroundColor: '#cccccc',
-                color: '#666666',
+              "&:disabled": {
+                backgroundColor: "#cccccc",
+                color: "#666666",
               },
-              transition: 'all 0.3s ease',
+              transition: "all 0.3s ease",
             }}
           >
             {loading ? "Analyzing..." : "Analyze Sentiment"}
@@ -296,8 +296,9 @@ const FeedbackManage = ({
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ padding: 2 }}>
-          {sentiment && (
+        
+        <DialogContent sx={{ padding: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '150px' }}>
+          {sentiment ? (
             <Box sx={{ 
               mt: 2, 
               p: 2, 
@@ -318,29 +319,31 @@ const FeedbackManage = ({
                 Sentiment Score: {overallScore.toFixed(2)}
               </Typography>
               
-              {/* Feedback Counts */}
+              {/* Feedback Counts - Better Spacing */}
               <Box sx={{ 
                 display: 'flex', 
-                justifyContent: 'space-between',
-                mb: 2,
-                p: 1,
+                flexDirection: 'column', 
+                gap: 1.5, 
                 bgcolor: '#f0f0f0',
+                p: 2,
                 borderRadius: '4px'
               }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: 'green' }}>
-                  <ThumbUpIcon fontSize="small" sx={{ mr: 0.5 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', color: 'green', gap: 1 }}>
+                  <ThumbUpIcon fontSize="small" />
                   <Typography>Positive: {positiveCount}</Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: 'red' }}>
-                  <ThumbDownIcon fontSize="small" sx={{ mr: 0.5 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', color: 'red', gap: 1 }}>
+                  <ThumbDownIcon fontSize="small" />
                   <Typography>Negative: {negativeCount}</Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: 'gray' }}>
-                  <FeedbackIcon fontSize="small" sx={{ mr: 0.5 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', color: 'gray', gap: 1 }}>
+                  <FeedbackIcon fontSize="small" />
                   <Typography>Neutral: {neutralCount}</Typography>
                 </Box>
               </Box>
             </Box>
+          ) : (
+            <CircularProgress />
           )}
         </DialogContent>
       </Dialog>
