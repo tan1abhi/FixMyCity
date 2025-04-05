@@ -1004,7 +1004,16 @@ const ViewIssues = () => {
                             onChange={(event, newValue) => handleTabChange(event, newValue, issue.id)}
                             variant="scrollable"
                             scrollButtons="auto"
-                            allowScrollButtonsMobile={true} // Ensures scroll buttons appear on mobile
+                            allowScrollButtonsMobile={true}
+                            TabScrollButtonProps={{
+                                // This ensures scroll buttons work correctly by forcing them to be visible
+                                disableRipple: false,
+                                sx: {
+                                    '&.Mui-disabled': {
+                                        opacity: 0.3,
+                                    }
+                                }
+                            }}
                             sx={{
                                 marginTop: "1rem",
                                 backgroundColor: "rgba(255, 255, 255, 0.8)",
@@ -1012,26 +1021,27 @@ const ViewIssues = () => {
                                 display: "flex",
                                 justifyContent: "center",
                                 "& .MuiTabs-flexContainer": {
-                                    justifyContent: "center"
+                                    justifyContent: "flex-start" // Changed from center to flex-start
                                 },
                                 // Make scroll buttons more visible with higher contrast
                                 "& .MuiTabs-scrollButtons": {
                                     opacity: 1,
                                     color: "rgba(0, 0, 0, 0.8)",
-                                    // Ensure buttons are always visible regardless of zoom level
-                                    visibility: "visible !important",
+                                    // Use !important less aggressively
+                                    visibility: "visible",
                                     // Add a background to make them stand out
                                     backgroundColor: "rgba(240, 240, 240, 0.6)",
                                     borderRadius: "50%",
-                                    margin: "0 4px"
+                                    margin: "0 4px",
+                                    zIndex: 2 // Ensure buttons appear above the tabs
                                 },
                                 // Add a hover effect
                                 "& .MuiTabs-scrollButtons:hover": {
                                     backgroundColor: "rgba(220, 220, 220, 0.9)",
                                 },
-                                // Override the default behavior that hides buttons
+                                // Override the default behavior that hides buttons but less aggressively
                                 "& .MuiTabs-scrollButtons.Mui-disabled": {
-                                    opacity: 0.3, // Still show disabled buttons but with reduced opacity
+                                    opacity: 0.3,
                                 }
                             }}
                         >
