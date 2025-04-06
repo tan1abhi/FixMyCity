@@ -121,6 +121,20 @@ FixMyCity transforms the way cities handle issues by offering:
 | **TextBlob**                           | NLP library used for basic text processing and sentiment analysis                      |
 | **Google Generative AI (Gemini API)**  | Integration for generating human-like responses using large language models            |
 
+---
+
+### ☁️ Database / Cloud / Deployment
+
+| Technology           | Purpose                                                                 |
+|----------------------|-------------------------------------------------------------------------|
+| **Firebase Firestore** | Cloud NoSQL database for storing issues, users, and authorities         |
+| **Firebase Auth**      | Authentication service for managing users                              |
+| **Firebase Storage**   | Media file storage (for issue images/videos)                           |
+| **Docker**             | Containerizes heavy Flask servers for consistent deployment            |
+| **Docker Hub**         | Image repository for Docker deployments                                |
+| **Render**             | Used initially for deployment (but may not support heavy servers)      |
+| **.env files**         | Secure config and secret management                                    |
+
 
 ---
 
