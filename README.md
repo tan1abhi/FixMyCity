@@ -2,7 +2,7 @@
 
 FixMyCity is a smart, AI-driven platform designed to streamline how citizens report urban issues and how authorities respond. It bridges the gap between the public and city administration to make cities smarter, safer, and more responsive.
 
-## Watch Demo
+## Watch Demo Video
 [![Watch the video](https://github.com/user-attachments/assets/4f34b0a0-e40e-43d0-9d63-12ffb23c71ec)](https://app.screencastify.com/v3/watch/TSiKGdwKeakD6UWtAjcN)
 ---
 
